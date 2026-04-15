@@ -1,0 +1,23 @@
+[package]
+
+version = "0.1.1"
+
+category = "isaaclab"
+readme  = "README.md"
+
+title = "DiffAero Algorithm Extension"
+author = "DiffAero Team"
+maintainer = "DiffAero Team"
+description="Differential learning algorithms for DiffAero on IsaacLab (APG, SHAC, SHA2C)"
+repository = "https://github.com/diffaero/diffaero-lab"
+keywords = ["diffaero", "isaaclab", "differential", "learning", "apg", "shac"]
+
+[dependencies]
+"isaaclab" = {}
+"diffaero_common" = {}
+"diffaero_uav" = {}
+
+[[python.module]]
+name = "diffaero_algo"
+
+[isaac_lab_settings]
