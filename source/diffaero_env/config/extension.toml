@@ -1,0 +1,24 @@
+[package]
+
+version = "0.1.1"
+
+category = "isaaclab"
+readme  = "README.md"
+
+title = "DiffAero Environment Extension"
+author = "DiffAero Team"
+maintainer = "DiffAero Team"
+description="IsaacLab task extension for DiffAero drone racing environments"
+repository = "https://github.com/diffaero/diffaero-lab"
+keywords = ["diffaero", "isaaclab", "drone", "racing", "task"]
+
+[dependencies]
+"isaaclab" = {}
+"isaaclab_rl" = {}
+"diffaero_common" = {}
+"diffaero_uav" = {}
+
+[[python.module]]
+name = "diffaero_env"
+
+[isaac_lab_settings]
