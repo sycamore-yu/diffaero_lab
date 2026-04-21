@@ -29,9 +29,14 @@ get_settings_manager().set_bool("/physics/cooking/ujitsoCollisionCooking", False
 @pytest.fixture(scope="module")
 def shared_env():
     """Shared adapter for all tests in this module."""
+    from diffaero_env.tasks.direct.drone_racing.drone_racing_env_cfg import DroneRacingEnvCfg
+
     sim_utils.create_new_stage()
     get_settings_manager().set_bool("/isaaclab/render/rtx_sensors", False)
-    adapter = DifferentialEnvAdapter.make("Isaac-Drone-Racing-Direct-v0")
+    cfg = DroneRacingEnvCfg()
+    cfg.scene = cfg.scene.replace(num_envs=8, replicate_physics=False)
+    cfg.sim.device = "cpu"
+    adapter = DifferentialEnvAdapter.make("Isaac-Drone-Racing-Direct-v0", cfg=cfg)
     yield adapter
     adapter.close()
 

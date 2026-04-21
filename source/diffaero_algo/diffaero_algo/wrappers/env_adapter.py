@@ -75,16 +75,22 @@ class DifferentialEnvAdapter:
 
         Args:
             task_id: Gymnasium task ID
-            cfg: Optional environment configuration. If None, loads default config.
+            cfg: Optional environment configuration. If None, loads default config for task.
 
         Returns:
             DifferentialEnvAdapter instance
         """
         if cfg is None:
-            from diffaero_env.tasks.direct.drone_racing.drone_racing_env_cfg import DroneRacingEnvCfg
+            # Use task-specific default config instead of hardcoding PhysX config
+            if "Warp" in task_id:
+                from diffaero_env.tasks.direct.drone_racing.drone_racing_env_warp_cfg import DroneRacingWarpEnvCfg
 
-            cfg = DroneRacingEnvCfg()
-            cfg.scene.num_envs = 256
+                cfg = DroneRacingWarpEnvCfg()
+            else:
+                from diffaero_env.tasks.direct.drone_racing.drone_racing_env_cfg import DroneRacingEnvCfg
+
+                cfg = DroneRacingEnvCfg()
+            cfg.scene.num_envs = 64
         env = gym.make(task_id, cfg=cfg)
         return cls(env)
 
