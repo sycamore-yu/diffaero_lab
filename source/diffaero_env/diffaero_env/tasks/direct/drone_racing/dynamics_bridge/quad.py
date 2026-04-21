@@ -54,6 +54,20 @@ class QuadDynamicsBridge(DynamicsBridgeBase):
             body_ids=self._body_id, forces=self._thrust_body, torques=self._torque_body
         )
 
+        # Compute motor_omega from control action using simplified quadrotor mixing.
+        # Motor layout (X-config): front-right (0), rear-left (1), front-left (2), rear-right (3)
+        # Basic mixing: base spin + roll/pitch corrections + yaw differential
+        # Phase 3 Task 4: meaningful motor-state derived from control action, not physics.
+        self._motor_omega[:, 0] = thrust + roll * 0.3 + pitch * 0.3  # FR motor
+        self._motor_omega[:, 1] = thrust - roll * 0.3 - pitch * 0.3  # RL motor
+        self._motor_omega[:, 2] = thrust - roll * 0.3 + pitch * 0.3  # FL motor
+        self._motor_omega[:, 3] = thrust + roll * 0.3 - pitch * 0.3  # RR motor
+        # Yaw correction: differential spin between CW and CCW motor pairs
+        self._motor_omega[:, 0] += yaw * self.moment_scale * 0.5
+        self._motor_omega[:, 1] += yaw * self.moment_scale * 0.5
+        self._motor_omega[:, 2] -= yaw * self.moment_scale * 0.5
+        self._motor_omega[:, 3] -= yaw * self.moment_scale * 0.5
+
     def read_base_state(self) -> dict[str, Tensor]:
         root_pos = wp.to_torch(self.robot.data.root_pos_w)
         root_quat = wp.to_torch(self.robot.data.root_quat_w)

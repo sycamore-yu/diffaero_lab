@@ -43,6 +43,27 @@ class NewtonBackendAdapter:
         self._body_id: Tensor | None = None
         self._motor_omega: Tensor | None = None
 
+    def _compute_motor_omega(self, actions: Tensor) -> None:
+        if self._motor_omega is None or self._motor_omega.shape[0] != actions.shape[0]:
+            self._motor_omega = torch.zeros(actions.shape[0], 4, device=self.device)
+
+        thrust_scale = getattr(self.cfg, "thrust_scale", 1.0) if self.cfg else 1.0
+        moment_scale = getattr(self.cfg, "moment_scale", 0.01) if self.cfg else 0.01
+
+        roll = actions[:, 0] * thrust_scale
+        pitch = actions[:, 1] * thrust_scale
+        yaw = actions[:, 2] * thrust_scale
+        thrust = actions[:, 3] * thrust_scale
+
+        self._motor_omega[:, 0] = thrust + roll * 0.3 + pitch * 0.3
+        self._motor_omega[:, 1] = thrust - roll * 0.3 - pitch * 0.3
+        self._motor_omega[:, 2] = thrust - roll * 0.3 + pitch * 0.3
+        self._motor_omega[:, 3] = thrust + roll * 0.3 - pitch * 0.3
+        self._motor_omega[:, 0] += yaw * moment_scale * 0.5
+        self._motor_omega[:, 1] += yaw * moment_scale * 0.5
+        self._motor_omega[:, 2] -= yaw * moment_scale * 0.5
+        self._motor_omega[:, 3] -= yaw * moment_scale * 0.5
+
     @staticmethod
     def _wp_to_torch(val):
         """Convert warp array to torch tensor, or pass torch tensors through unchanged.
@@ -68,31 +89,33 @@ class NewtonBackendAdapter:
     def process_action(self, actions: Tensor) -> None:
         """Pre-process actions before physics step."""
         self._action_buf = actions.clone()
+        self._compute_motor_omega(actions)
 
     def apply_to_sim(self) -> None:
         """Apply processed actions to the simulation via permanent_wrench_composer."""
-        if self._action_buf is None or self.robot is None:
+        if self._action_buf is None:
             return
         actions = self._action_buf
+        if self._thrust_body is None:
+            self._thrust_body = torch.zeros(self._num_envs, 1, 3, device=self.device)
+            self._torque_body = torch.zeros(self._num_envs, 1, 3, device=self.device)
+            self._body_id = torch.zeros(self._num_envs, 1, dtype=torch.int32, device=self.device)
+
         thrust_scale = getattr(self.cfg, "thrust_scale", 1.0) if self.cfg else 1.0
         moment_scale = getattr(self.cfg, "moment_scale", 0.01) if self.cfg else 0.01
-
         roll = actions[:, 0] * thrust_scale
         pitch = actions[:, 1] * thrust_scale
         yaw = actions[:, 2] * thrust_scale
         thrust = actions[:, 3] * thrust_scale
 
-        if self._thrust_body is None:
-            self._thrust_body = torch.zeros(self._num_envs, 1, 3, device=self.device)
-            self._torque_body = torch.zeros(self._num_envs, 1, 3, device=self.device)
-            self._body_id = torch.zeros(self._num_envs, 1, dtype=torch.int32, device=self.device)
+        self._compute_motor_omega(actions)
 
         self._thrust_body[:, 0, 2] = thrust
         self._torque_body[:, 0, 0] = roll * moment_scale
         self._torque_body[:, 0, 1] = pitch * moment_scale
         self._torque_body[:, 0, 2] = yaw * moment_scale
 
-        if hasattr(self.robot, "permanent_wrench_composer"):
+        if self.robot is not None and hasattr(self.robot, "permanent_wrench_composer"):
             self.robot.permanent_wrench_composer.set_forces_and_torques_index(
                 body_ids=self._body_id, forces=self._thrust_body, torques=self._torque_body
             )

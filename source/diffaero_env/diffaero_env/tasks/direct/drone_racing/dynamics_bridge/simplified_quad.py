@@ -5,7 +5,6 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 import torch
-import warp as wp
 from torch import Tensor
 
 from diffaero_env.tasks.direct.drone_racing.dynamics_bridge.base import DynamicsBridgeBase
