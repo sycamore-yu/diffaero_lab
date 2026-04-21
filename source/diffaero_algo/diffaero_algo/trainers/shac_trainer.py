@@ -76,4 +76,4 @@ class SHACTrainer:
             else:
                 loss = -rewards.mean()
 
-            self.shac.record_loss(loss, policy_info, batch.extras, terminated)
+            self.shac.record_loss(loss, policy_info, batch.extras, reward=rewards, terminated=terminated)

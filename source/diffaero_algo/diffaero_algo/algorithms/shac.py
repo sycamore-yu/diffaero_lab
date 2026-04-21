@@ -127,16 +127,29 @@ class SHAC:
         loss: torch.Tensor,
         policy_info: dict[str, Any],
         extras: dict[str, Any],
+        reward: torch.Tensor | None = None,
         terminated: torch.Tensor | None = None,
     ) -> None:
-        """Record loss for actor update with value bootstrap."""
+        """Record loss for actor update with value bootstrap.
+
+        Args:
+            loss: Scalar loss tensor
+            policy_info: Dict with policy information (may contain entropy)
+            extras: Dict with env information including task_terms
+            reward: Reward tensor from env.step (recommended for GAE computation).
+                    If not provided, attempts to extract from extras["task_terms"]["reward"].
+            terminated: Termination tensor
+        """
         self._actor_loss = self._actor_loss + loss.mean()
 
         if "entropy" in policy_info:
             entropy = policy_info["entropy"].mean()
             self._entropy_loss = self._entropy_loss - entropy
 
-        if EXTRA_TASK_TERMS in extras:
+        # Prefer explicit reward parameter; fallback to task_terms for backward compatibility
+        if reward is not None:
+            self._rewards_buffer.append(reward.detach())
+        elif EXTRA_TASK_TERMS in extras:
             task_terms = extras[EXTRA_TASK_TERMS]
             if "reward" in task_terms:
                 self._rewards_buffer.append(task_terms["reward"].detach())
