@@ -16,6 +16,7 @@ def build_sim_state(
     step_count: Tensor,
     last_action: Tensor,
     progress: Tensor,
+    target_position_w: Tensor,
     dynamics_info: dict,
 ) -> dict[str, Tensor | dict]:
     return {
@@ -27,5 +28,6 @@ def build_sim_state(
         "step_count": step_count,
         "last_action": last_action,
         "progress": progress,
+        "target_position_w": target_position_w,
         "dynamics": dynamics_info,
     }

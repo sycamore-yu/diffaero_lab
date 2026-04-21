@@ -51,6 +51,10 @@ class DroneRacingEnv(DirectRLEnv):
             | None
         ) = None
         self._prev_action: torch.Tensor | None = None
+        self._prev_position_w: torch.Tensor | None = None
+        self._gate_index: torch.Tensor | None = None
+        self._gates_passed: torch.Tensor | None = None
+        self._gate_positions: torch.Tensor | None = None
         super().__init__(cfg, render_mode, **kwargs)
 
     def _setup_scene(self) -> None:
@@ -85,6 +89,19 @@ class DroneRacingEnv(DirectRLEnv):
 
         self.actions = torch.zeros(self.num_envs, self.cfg.action_space, device=self.device)
         self._prev_action = torch.zeros_like(self.actions)
+        self._prev_position_w = torch.zeros(self.num_envs, 3, device=self.device)
+        self._gate_index = torch.zeros(self.num_envs, dtype=torch.long, device=self.device)
+        self._gates_passed = torch.zeros(self.num_envs, dtype=torch.float, device=self.device)
+        self._init_position_w = torch.zeros(self.num_envs, 3, device=self.device)
+
+        num_gates = 20
+        gate_spacing = 2.0
+        gate_z_start = 2.0
+        gate_z_positions = (
+            gate_z_start + (torch.arange(num_gates, dtype=torch.float, device=self.device)) * gate_spacing
+        )
+        self._gate_positions = torch.zeros(num_gates, 3, device=self.device)
+        self._gate_positions[:, 2] = gate_z_positions
 
     def _pre_physics_step(self, actions: torch.Tensor) -> None:
         self._prev_action = self.actions.clone()
@@ -112,13 +129,24 @@ class DroneRacingEnv(DirectRLEnv):
         motor_state = self._bridge.read_motor_state()
         dynamics_info = self._bridge.read_dynamics_info()
 
-        total_reward, task_terms = compute_rewards(
+        position_w = bridge_state["position_w"]
+        num_gates = self._gate_positions.shape[0]
+
+        target_gate_idx = torch.clamp(self._gate_index, 0, num_gates - 1)
+        target_position_w = self._gate_positions[target_gate_idx]
+
+        total_reward, task_terms, updated_gate_index, updated_gates_passed, collision = compute_rewards(
             rew_scale_progress=self.cfg.rew_scale_progress,
             rew_scale_tracking=self.cfg.rew_scale_tracking,
             rew_scale_control_effort=self.cfg.rew_scale_control_effort,
             rew_scale_ang_vel=self.cfg.rew_scale_ang_vel,
             rew_scale_terminal=self.cfg.rew_scale_terminal,
             rew_scale_gate=self.cfg.rew_scale_gate,
+            position_w=position_w,
+            target_position_w=target_position_w,
+            prev_position_w=self._prev_position_w,
+            gate_index=self._gate_index,
+            gates_passed=self._gates_passed,
             angular_velocity_b=bridge_state["angular_velocity_b"],
             last_action=self.actions,
             prev_action=self._prev_action if self._prev_action is not None else torch.zeros_like(self.actions),
@@ -126,8 +154,12 @@ class DroneRacingEnv(DirectRLEnv):
             step_count=self.episode_length_buf.float(),
         )
 
+        self._gate_index = updated_gate_index
+        self._gates_passed = updated_gates_passed
+        self._prev_position_w = position_w.clone()
+
         sim_state = build_sim_state(
-            position_w=bridge_state["position_w"],
+            position_w=position_w,
             quaternion_w=bridge_state["quaternion_w"],
             linear_velocity_w=bridge_state["linear_velocity_w"],
             angular_velocity_b=bridge_state["angular_velocity_b"],
@@ -135,6 +167,7 @@ class DroneRacingEnv(DirectRLEnv):
             step_count=self.episode_length_buf.float(),
             last_action=self.actions,
             progress=task_terms["progress"],
+            target_position_w=target_position_w,
             dynamics_info=dynamics_info,
         )
 
@@ -166,3 +199,12 @@ class DroneRacingEnv(DirectRLEnv):
 
         self._prev_action[env_ids_t] = 0.0
         self.actions[env_ids_t] = 0.0
+
+        self._gate_index[env_ids_t] = 0
+        self._gates_passed[env_ids_t] = 0.0
+        init_pos = self.scene.env_origins[env_ids_t]
+        if init_pos.shape[0] > 0:
+            self._init_position_w[env_ids_t] = init_pos
+        self._prev_position_w[env_ids_t] = (
+            self.scene.env_origins[env_ids_t] if len(env_ids_t) == self.num_envs else self._init_position_w[env_ids_t]
+        )
