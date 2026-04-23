@@ -1,0 +1,19 @@
+# Copyright (c) 2022-2026, The Isaac Lab Project Developers.
+# All rights reserved.
+#
+# SPDX-License-Identifier: BSD-3-Clause
+
+defaults:
+  - /env/drone_racing
+
+algorithm:
+  name: shac
+  lr: 3.0e-4
+  critic_lr: 3.0e-4
+  max_grad_norm: 1.0
+  rollout_horizon: 32
+  hidden_dims: [256, 128, 64]
+  critic_hidden_dims: [256, 128, 64]
+  entropy_coef: 0.01
+  gamma: 0.99
+  lmbda: 0.95
