@@ -14,13 +14,10 @@ Usage:
 import argparse
 import sys
 
-import diffaero_env.tasks  # noqa: F401
-from isaaclab_tasks.utils import add_launcher_args, launch_simulation
-from isaaclab_tasks.utils.parse_cfg import parse_env_cfg
-
-from diffaero_algo.algorithms.apg_stochastic import APGStochasticConfig
-from diffaero_algo.trainers.apg_stochastic_trainer import APGStochasticTrainer
-from diffaero_algo.wrappers.env_adapter import DifferentialEnvAdapter
+import diffaero_lab.env.tasks  # noqa: F401
+from diffaero_lab.algo.algorithms.apg_stochastic import APGStochasticConfig
+from diffaero_lab.algo.trainers.apg_stochastic_trainer import APGStochasticTrainer
+from diffaero_lab.algo.wrappers.env_adapter import DifferentialEnvAdapter
 
 
 def main():

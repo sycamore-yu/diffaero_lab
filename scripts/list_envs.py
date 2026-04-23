@@ -34,7 +34,7 @@ simulation_app = app_launcher.app
 import gymnasium as gym
 from prettytable import PrettyTable
 
-import diffaero_env.tasks  # noqa: F401
+import diffaero_lab.env.tasks  # noqa: F401
 
 
 def main():

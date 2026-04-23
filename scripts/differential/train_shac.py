@@ -14,13 +14,10 @@ Usage:
 import argparse
 import sys
 
-import diffaero_env.tasks  # noqa: F401
-from isaaclab_tasks.utils import add_launcher_args, launch_simulation
-from isaaclab_tasks.utils.parse_cfg import parse_env_cfg
-
-from diffaero_algo.algorithms.shac import SHACConfig
-from diffaero_algo.trainers.shac_trainer import SHACTrainer
-from diffaero_algo.wrappers.env_adapter import DifferentialEnvAdapter
+import diffaero_lab.env.tasks  # noqa: F401
+from diffaero_lab.algo.algorithms.shac import SHACConfig
+from diffaero_lab.algo.trainers.shac_trainer import SHACTrainer
+from diffaero_lab.algo.wrappers.env_adapter import DifferentialEnvAdapter
 
 
 def main():
