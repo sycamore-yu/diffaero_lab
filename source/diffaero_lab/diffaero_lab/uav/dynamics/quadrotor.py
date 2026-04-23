@@ -7,8 +7,8 @@
 import torch
 from torch import Tensor
 
-from diffaero_uav.dynamics.base import BaseDynamics
-from diffaero_uav.dynamics.controller import RateController
+from diffaero_lab.uav.dynamics.base import BaseDynamics
+from diffaero_lab.uav.dynamics.controller import RateController
 
 
 class QuadrotorModel(BaseDynamics):

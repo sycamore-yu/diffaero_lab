@@ -7,13 +7,13 @@
 """Discrete point-mass dynamics model (pmd).
 
 Adapts refer/diffaero/dynamics/pointmass.py:DiscretePointMassModel
-to the diffaero_uav BaseDynamics interface.
+to the diffaero_lab.uav BaseDynamics interface.
 """
 
 import torch
 from torch import Tensor
 
-from diffaero_uav.dynamics.base import BaseDynamics
+from diffaero_lab.uav.dynamics.base import BaseDynamics
 
 
 class DiscretePointMassModel(BaseDynamics):

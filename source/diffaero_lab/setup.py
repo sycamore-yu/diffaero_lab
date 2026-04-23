@@ -8,7 +8,7 @@
 import os
 
 import toml
-from setuptools import setup
+from setuptools import find_packages, setup
 
 # Obtain the extension data from the extension.toml file
 EXTENSION_PATH = os.path.dirname(os.path.realpath(__file__))
@@ -21,10 +21,11 @@ INSTALL_REQUIRES = [
     "psutil",
 ]
 
-# Installation operation
+PACKAGES = find_packages(where=".", include="diffaero_lab.*")
+
 setup(
     name="diffaero_lab",
-    packages=["diffaero_lab"],
+    packages=PACKAGES,
     author=EXTENSION_TOML_DATA["package"]["author"],
     maintainer=EXTENSION_TOML_DATA["package"]["maintainer"],
     url=EXTENSION_TOML_DATA["package"]["repository"],

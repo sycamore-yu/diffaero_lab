@@ -7,7 +7,7 @@
 import torch
 from torch import Tensor
 
-from diffaero_uav.dynamics.base import BaseDynamics
+from diffaero_lab.uav.dynamics.base import BaseDynamics
 
 
 class ContinuousPointMassModel(BaseDynamics):

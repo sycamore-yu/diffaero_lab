@@ -13,7 +13,7 @@ QuadrotorModel ([roll, pitch, yaw, thrust]) but with simplified physics.
 import torch
 from torch import Tensor
 
-from diffaero_uav.dynamics.base import BaseDynamics
+from diffaero_lab.uav.dynamics.base import BaseDynamics
 
 
 class SimplifiedQuadrotorModel(BaseDynamics):

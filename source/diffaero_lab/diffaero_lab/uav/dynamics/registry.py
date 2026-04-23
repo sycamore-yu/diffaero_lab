@@ -3,10 +3,10 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
-from diffaero_uav.dynamics.quadrotor import QuadrotorModel
-from diffaero_uav.dynamics.pointmass_discrete import DiscretePointMassModel
-from diffaero_uav.dynamics.pointmass_continuous import ContinuousPointMassModel
-from diffaero_uav.dynamics.simplified_quadrotor import SimplifiedQuadrotorModel
+from diffaero_lab.uav.dynamics.quadrotor import QuadrotorModel
+from diffaero_lab.uav.dynamics.pointmass_discrete import DiscretePointMassModel
+from diffaero_lab.uav.dynamics.pointmass_continuous import ContinuousPointMassModel
+from diffaero_lab.uav.dynamics.simplified_quadrotor import SimplifiedQuadrotorModel
 
 DYNAMICS_REGISTRY = {
     "quad": QuadrotorModel,

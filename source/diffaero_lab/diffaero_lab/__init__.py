@@ -7,9 +7,10 @@
 Python module serving as a project/extension template.
 """
 
-from .tasks import *
-
 import contextlib
+
+with contextlib.suppress(ImportError):
+    from .tasks import *
 
 with contextlib.suppress(ImportError):
     from .ui_extension_example import *
