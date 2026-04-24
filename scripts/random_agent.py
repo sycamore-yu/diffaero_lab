@@ -29,7 +29,7 @@ args_cli, hydra_args = parser.parse_known_args()
 # pass remaining args to Hydra
 sys.argv = [sys.argv[0]] + hydra_args
 
-import diffaero_env.tasks  # noqa: F401
+import diffaero_lab.env.tasks  # noqa: F401
 
 
 def main():

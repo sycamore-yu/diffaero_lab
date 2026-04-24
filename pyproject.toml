@@ -146,3 +146,23 @@ markers = [
 [[tool.uv.index]]
 url = "https://pypi.nvidia.com"
 explicit = false
+[build-system]
+requires = ["setuptools<82.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "diffaero"
+version = "0.1.0"
+description = "DiffAero Lab - Isaac Lab extension for drone racing simulation"
+authors = [{name = "DiffAero Team"}]
+requires-python = ">=3.10"
+dependencies = [
+    "psutil",
+]
+
+[tool.setuptools]
+package-dir = {"" = "source/diffaero_lab"}
+
+[tool.setuptools.packages.find]
+where = ["source/diffaero_lab"]
+include = ["diffaero_lab*"]

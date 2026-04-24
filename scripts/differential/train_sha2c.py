@@ -7,13 +7,12 @@
 import argparse
 import sys
 
-import diffaero_env.tasks  # noqa: F401
-from isaaclab_tasks.utils import add_launcher_args, launch_simulation
-from isaaclab_tasks.utils.parse_cfg import parse_env_cfg
+import diffaero_lab.env.tasks  # noqa: F401
+from diffaero_lab.algo.algorithms.sha2c import SHA2CConfig
+from diffaero_lab.algo.trainers.sha2c_trainer import SHA2CTrainer
+from diffaero_lab.algo.wrappers.env_adapter import DifferentialEnvAdapter
 
-from diffaero_algo.algorithms.sha2c import SHA2CConfig
-from diffaero_algo.trainers.sha2c_trainer import SHA2CTrainer
-from diffaero_algo.wrappers.env_adapter import DifferentialEnvAdapter
+from isaaclab_tasks.utils import add_launcher_args, launch_simulation, parse_env_cfg
 
 
 def main():
