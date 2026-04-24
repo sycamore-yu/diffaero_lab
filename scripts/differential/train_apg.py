@@ -19,6 +19,8 @@ from diffaero_lab.algo.algorithms.apg import APGConfig
 from diffaero_lab.algo.trainers.apg_trainer import APGTrainer
 from diffaero_lab.algo.wrappers.env_adapter import DifferentialEnvAdapter
 
+from isaaclab_tasks.utils import add_launcher_args, launch_simulation, parse_env_cfg
+
 
 def main():
     parser = argparse.ArgumentParser(description="Train APG on drone racing task")

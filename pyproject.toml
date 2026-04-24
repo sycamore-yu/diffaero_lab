@@ -161,6 +161,8 @@ dependencies = [
 ]
 
 [tool.setuptools]
-packages = [
-    "diffaero_lab",
-]
+package-dir = {"" = "source/diffaero_lab"}
+
+[tool.setuptools.packages.find]
+where = ["source/diffaero_lab"]
+include = ["diffaero_lab*"]

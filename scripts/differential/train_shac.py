@@ -19,6 +19,8 @@ from diffaero_lab.algo.algorithms.shac import SHACConfig
 from diffaero_lab.algo.trainers.shac_trainer import SHACTrainer
 from diffaero_lab.algo.wrappers.env_adapter import DifferentialEnvAdapter
 
+from isaaclab_tasks.utils import add_launcher_args, launch_simulation, parse_env_cfg
+
 
 def main():
     parser = argparse.ArgumentParser(description="Train SHAC on drone racing task")

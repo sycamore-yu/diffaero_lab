@@ -19,6 +19,8 @@ from diffaero_lab.algo.algorithms.apg_stochastic import APGStochasticConfig
 from diffaero_lab.algo.trainers.apg_stochastic_trainer import APGStochasticTrainer
 from diffaero_lab.algo.wrappers.env_adapter import DifferentialEnvAdapter
 
+from isaaclab_tasks.utils import add_launcher_args, launch_simulation, parse_env_cfg
+
 
 def main():
     parser = argparse.ArgumentParser(description="Train APG Stochastic on drone racing task")
