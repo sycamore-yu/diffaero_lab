@@ -5,23 +5,17 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 import torch
-import warp as wp
 from torch import Tensor
 
-from diffaero_lab.env.tasks.direct.drone_racing.dynamics_bridge.base import DynamicsBridgeBase
+from diffaero_lab.tasks.direct.drone_racing.dynamics_bridge.base import DynamicsBridgeBase
 
 
-class PMDDynamicsBridge(DynamicsBridgeBase):
-    """PhysX bridge for discrete point-mass dynamics (pmd)."""
-
+class SimpleDynamicsBridge(DynamicsBridgeBase):
     def __init__(self, cfg: "DroneRacingEnvCfg", robot, num_envs: int, device: str):
         super().__init__(cfg, robot, num_envs, device)
-        self.thrust_scale = cfg.thrust_scale
-        self.moment_scale = cfg.moment_scale
         self._motor_omega = torch.zeros(num_envs, 4, device=device)
         self._thrust_body = torch.zeros(num_envs, 1, 3, device=device)
         self._torque_body = torch.zeros(num_envs, 1, 3, device=device)
-        self._body_id = torch.zeros(num_envs, 1, dtype=torch.int32, device=device)
 
     def reset(self, env_ids: Tensor) -> None:
         self._motor_omega[env_ids] = 0.0
@@ -35,9 +29,13 @@ class PMDDynamicsBridge(DynamicsBridgeBase):
         if self._action_buf is None:
             return
         actions = self._action_buf
-        thrust = actions[:, 2] * self.thrust_scale
+        roll, pitch, yaw, thrust = self._map_quad_action(actions)
+
         self._thrust_body[:, 0, 2] = thrust
-        self._torque_body[:, 0, :] = 0.0
+        self._torque_body[:, 0, 0] = roll
+        self._torque_body[:, 0, 1] = pitch
+        self._torque_body[:, 0, 2] = yaw
+
         self.robot.permanent_wrench_composer.set_forces_and_torques_index(
             body_ids=self._body_id, forces=self._thrust_body, torques=self._torque_body
         )
@@ -59,9 +57,9 @@ class PMDDynamicsBridge(DynamicsBridgeBase):
 
     def read_dynamics_info(self) -> dict:
         return {
-            "model_name": "pmd",
+            "model_name": "simple",
             "state_layout_version": "1.0",
-            "quat_convention": "wxyz",
-            "tensor_backend": "torch",
+            "quat_convention": "xyzw",
+            "tensor_backend": "physx",
             "write_mode": "indexed",
         }

@@ -5,12 +5,15 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 import torch
+import warp as wp
 from torch import Tensor
 
-from diffaero_lab.env.tasks.direct.drone_racing.dynamics_bridge.base import DynamicsBridgeBase
+from diffaero_lab.tasks.direct.drone_racing.dynamics_bridge.base import DynamicsBridgeBase
 
 
-class SimpleDynamicsBridge(DynamicsBridgeBase):
+class PMCDynamicsBridge(DynamicsBridgeBase):
+    """PhysX bridge for continuous point-mass dynamics (pmc)."""
+
     def __init__(self, cfg: "DroneRacingEnvCfg", robot, num_envs: int, device: str):
         super().__init__(cfg, robot, num_envs, device)
         self.thrust_scale = cfg.thrust_scale
@@ -32,16 +35,9 @@ class SimpleDynamicsBridge(DynamicsBridgeBase):
         if self._action_buf is None:
             return
         actions = self._action_buf
-        roll = actions[:, 0] * self.thrust_scale
-        pitch = actions[:, 1] * self.thrust_scale
-        yaw = actions[:, 2] * self.thrust_scale
-        thrust = actions[:, 3] * self.thrust_scale
-
+        thrust = actions[:, 2] * self.thrust_scale
         self._thrust_body[:, 0, 2] = thrust
-        self._torque_body[:, 0, 0] = roll * self.moment_scale
-        self._torque_body[:, 0, 1] = pitch * self.moment_scale
-        self._torque_body[:, 0, 2] = yaw * self.moment_scale
-
+        self._torque_body[:, 0, :] = 0.0
         self.robot.permanent_wrench_composer.set_forces_and_torques_index(
             body_ids=self._body_id, forces=self._thrust_body, torques=self._torque_body
         )
@@ -63,9 +59,9 @@ class SimpleDynamicsBridge(DynamicsBridgeBase):
 
     def read_dynamics_info(self) -> dict:
         return {
-            "model_name": "simple",
+            "model_name": "pmc",
             "state_layout_version": "1.0",
-            "quat_convention": "wxyz",
-            "tensor_backend": "torch",
+            "quat_convention": "xyzw",
+            "tensor_backend": "physx",
             "write_mode": "indexed",
         }

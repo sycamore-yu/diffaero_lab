@@ -5,7 +5,7 @@
 
 import gymnasium as gym
 
-from diffaero_lab.env.tasks.direct.drone_racing import agents
+from diffaero_lab.tasks.direct.drone_racing import agents
 
 
 gym.register(

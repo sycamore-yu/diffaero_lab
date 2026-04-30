@@ -41,28 +41,51 @@ class NewtonBackendAdapter:
         self._thrust_body: Tensor | None = None
         self._torque_body: Tensor | None = None
         self._body_id: Tensor | None = None
+        self._robot_weight: float | None = None
         self._motor_omega: Tensor | None = None
+
+    def _ensure_body_wrench_params(self) -> None:
+        if self._body_id is None:
+            if self.robot is not None and hasattr(self.robot, "find_bodies"):
+                body_ids = self.robot.find_bodies("body")[0]
+                if not torch.is_tensor(body_ids):
+                    body_ids = torch.tensor(body_ids, dtype=torch.int32, device=self.device)
+                self._body_id = body_ids.to(device=self.device, dtype=torch.int32)
+            else:
+                self._body_id = torch.zeros(1, dtype=torch.int32, device=self.device)
+        if self._robot_weight is None:
+            if self.robot is not None and hasattr(self.robot, "data") and hasattr(self.robot.data, "body_mass"):
+                masses = self._wp_to_torch(self.robot.data.body_mass)
+                gravity_cfg = getattr(getattr(self.cfg, "sim", None), "gravity", (0.0, 0.0, -9.81))
+                gravity = torch.tensor(gravity_cfg, device=self.device).norm()
+                self._robot_weight = (masses[0].sum() * gravity).item()
+            else:
+                self._robot_weight = 1.0
+
+    def _map_quad_action(self, actions: Tensor) -> tuple[Tensor, Tensor, Tensor, Tensor]:
+        self._ensure_body_wrench_params()
+        thrust_to_weight = getattr(self.cfg, "thrust_scale", 1.9) if self.cfg else 1.9
+        moment_scale = getattr(self.cfg, "moment_scale", 0.01) if self.cfg else 0.01
+        roll = actions[:, 0] * moment_scale
+        pitch = actions[:, 1] * moment_scale
+        yaw = actions[:, 2] * moment_scale
+        thrust = thrust_to_weight * self._robot_weight * (actions[:, 3] + 1.0) / 2.0
+        return roll, pitch, yaw, thrust
 
     def _compute_motor_omega(self, actions: Tensor) -> None:
         if self._motor_omega is None or self._motor_omega.shape[0] != actions.shape[0]:
             self._motor_omega = torch.zeros(actions.shape[0], 4, device=self.device)
 
-        thrust_scale = getattr(self.cfg, "thrust_scale", 1.0) if self.cfg else 1.0
-        moment_scale = getattr(self.cfg, "moment_scale", 0.01) if self.cfg else 0.01
-
-        roll = actions[:, 0] * thrust_scale
-        pitch = actions[:, 1] * thrust_scale
-        yaw = actions[:, 2] * thrust_scale
-        thrust = actions[:, 3] * thrust_scale
+        roll, pitch, yaw, thrust = self._map_quad_action(actions)
 
         self._motor_omega[:, 0] = thrust + roll * 0.3 + pitch * 0.3
         self._motor_omega[:, 1] = thrust - roll * 0.3 - pitch * 0.3
         self._motor_omega[:, 2] = thrust - roll * 0.3 + pitch * 0.3
         self._motor_omega[:, 3] = thrust + roll * 0.3 - pitch * 0.3
-        self._motor_omega[:, 0] += yaw * moment_scale * 0.5
-        self._motor_omega[:, 1] += yaw * moment_scale * 0.5
-        self._motor_omega[:, 2] -= yaw * moment_scale * 0.5
-        self._motor_omega[:, 3] -= yaw * moment_scale * 0.5
+        self._motor_omega[:, 0] += yaw * 0.5
+        self._motor_omega[:, 1] += yaw * 0.5
+        self._motor_omega[:, 2] -= yaw * 0.5
+        self._motor_omega[:, 3] -= yaw * 0.5
 
     @staticmethod
     def _wp_to_torch(val):
@@ -73,8 +96,12 @@ class NewtonBackendAdapter:
         """
         import warp as wp
 
-        if isinstance(val, wp.types.array):
+        if torch.is_tensor(val):
+            return val
+        try:
             return wp.to_torch(val)
+        except Exception:
+            pass
         return val
 
     def reset(self, env_ids: Tensor) -> None:
@@ -88,7 +115,7 @@ class NewtonBackendAdapter:
 
     def process_action(self, actions: Tensor) -> None:
         """Pre-process actions before physics step."""
-        self._action_buf = actions.clone()
+        self._action_buf = actions.clone().detach()
         self._compute_motor_omega(actions)
 
     def apply_to_sim(self) -> None:
@@ -99,21 +126,14 @@ class NewtonBackendAdapter:
         if self._thrust_body is None:
             self._thrust_body = torch.zeros(self._num_envs, 1, 3, device=self.device)
             self._torque_body = torch.zeros(self._num_envs, 1, 3, device=self.device)
-            self._body_id = torch.zeros(self._num_envs, 1, dtype=torch.int32, device=self.device)
-
-        thrust_scale = getattr(self.cfg, "thrust_scale", 1.0) if self.cfg else 1.0
-        moment_scale = getattr(self.cfg, "moment_scale", 0.01) if self.cfg else 0.01
-        roll = actions[:, 0] * thrust_scale
-        pitch = actions[:, 1] * thrust_scale
-        yaw = actions[:, 2] * thrust_scale
-        thrust = actions[:, 3] * thrust_scale
+        roll, pitch, yaw, thrust = self._map_quad_action(actions)
 
         self._compute_motor_omega(actions)
 
         self._thrust_body[:, 0, 2] = thrust
-        self._torque_body[:, 0, 0] = roll * moment_scale
-        self._torque_body[:, 0, 1] = pitch * moment_scale
-        self._torque_body[:, 0, 2] = yaw * moment_scale
+        self._torque_body[:, 0, 0] = roll
+        self._torque_body[:, 0, 1] = pitch
+        self._torque_body[:, 0, 2] = yaw
 
         if self.robot is not None and hasattr(self.robot, "permanent_wrench_composer"):
             self.robot.permanent_wrench_composer.set_forces_and_torques_index(
@@ -165,8 +185,15 @@ class NewtonBackendAdapter:
             "state_layout_version": "1.0",
             "tensor_backend": "warp",
             "write_mode": "indexed",
-            "quat_convention": "wxyz",
+            "quat_convention": "xyzw",
         }
+
+    def detach(self) -> None:
+        """Detach cached adapter tensors at rollout boundaries."""
+        for name in ("_action_buf", "_motor_omega", "_thrust_body", "_torque_body"):
+            value = getattr(self, name, None)
+            if torch.is_tensor(value):
+                setattr(self, name, value.detach())
 
 
 def build_newton_adapter(

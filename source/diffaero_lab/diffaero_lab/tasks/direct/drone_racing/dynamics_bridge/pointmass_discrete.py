@@ -8,11 +8,11 @@ import torch
 import warp as wp
 from torch import Tensor
 
-from diffaero_lab.env.tasks.direct.drone_racing.dynamics_bridge.base import DynamicsBridgeBase
+from diffaero_lab.tasks.direct.drone_racing.dynamics_bridge.base import DynamicsBridgeBase
 
 
-class PMCDynamicsBridge(DynamicsBridgeBase):
-    """PhysX bridge for continuous point-mass dynamics (pmc)."""
+class PMDDynamicsBridge(DynamicsBridgeBase):
+    """PhysX bridge for discrete point-mass dynamics (pmd)."""
 
     def __init__(self, cfg: "DroneRacingEnvCfg", robot, num_envs: int, device: str):
         super().__init__(cfg, robot, num_envs, device)
@@ -59,9 +59,9 @@ class PMCDynamicsBridge(DynamicsBridgeBase):
 
     def read_dynamics_info(self) -> dict:
         return {
-            "model_name": "pmc",
+            "model_name": "pmd",
             "state_layout_version": "1.0",
-            "quat_convention": "wxyz",
-            "tensor_backend": "torch",
+            "quat_convention": "xyzw",
+            "tensor_backend": "physx",
             "write_mode": "indexed",
         }

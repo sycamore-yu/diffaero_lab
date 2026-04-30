@@ -14,7 +14,7 @@ Usage:
 import argparse
 import sys
 
-import diffaero_lab.env.tasks  # noqa: F401
+import diffaero_lab.tasks  # noqa: F401
 from diffaero_lab.algo.algorithms.shac import SHACConfig
 from diffaero_lab.algo.trainers.shac_trainer import SHACTrainer
 from diffaero_lab.algo.wrappers.env_adapter import DifferentialEnvAdapter

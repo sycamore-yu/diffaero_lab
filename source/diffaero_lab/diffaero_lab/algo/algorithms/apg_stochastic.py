@@ -76,7 +76,7 @@ class APGStochastic:
     """Stochastic APG using a Gaussian policy with reparameterized sampling and tanh squashing.
 
     This implementation extends the deterministic APG pattern to support stochastic policies
-    that produce action + log_prob for policy gradient updates.
+    while keeping the sampled action connected to differentiable environment losses.
     """
 
     def __init__(
@@ -142,16 +142,24 @@ class APGStochastic:
         return action, policy_info
 
     def record_loss(self, loss: torch.Tensor, policy_info: dict[str, Any], env_info: dict[str, Any]) -> None:
-        """Accumulate loss for the rollout, optionally including entropy bonus.
+        """Accumulate differentiable rollout loss for direct APG backprop."""
+        actor_loss = loss.mean()
+        if self.entropy_coef:
+            actor_loss = actor_loss - self.entropy_coef * policy_info["entropy"].mean()
+        self.actor_loss += actor_loss
 
-        Args:
-            loss: Scalar loss tensor (typically policy gradient loss)
-            policy_info: Dict with policy information including log_prob and entropy
-            env_info: Dict with env information including task_terms
-        """
-        log_prob = policy_info["log_prob"]
-        entropy_bonus = self.entropy_coef * policy_info.get("entropy", torch.tensor(0.0, device=self.device)).mean()
-        self.actor_loss += (-log_prob * loss).mean() - entropy_bonus
+    def record_policy_gradient_loss(self, reward: torch.Tensor, policy_info: dict[str, Any]) -> None:
+        """Accumulate score-function loss for non-differentiable simulator backends."""
+        advantage = reward.detach()
+        if advantage.numel() > 1:
+            advantage = advantage - advantage.mean()
+            std = advantage.std(unbiased=False)
+            if std > 1e-6:
+                advantage = advantage / (std + 1e-6)
+        actor_loss = -(policy_info["log_prob"] * advantage).mean()
+        if self.entropy_coef:
+            actor_loss = actor_loss - self.entropy_coef * policy_info["entropy"].mean()
+        self.actor_loss += actor_loss
 
     def update_actor(self) -> tuple[dict[str, float], dict[str, float]]:
         """Compute gradients and update actor network.

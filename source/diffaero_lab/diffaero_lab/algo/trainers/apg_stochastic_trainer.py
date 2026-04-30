@@ -5,13 +5,9 @@
 
 """APG Stochastic trainer that orchestrates rollout and backward pass with stochastic policies."""
 
-from typing import Any
-
-import torch
-
 from diffaero_lab.algo.algorithms.apg_stochastic import APGStochastic, APGStochasticConfig
 from diffaero_lab.algo.wrappers.env_adapter import DifferentialEnvAdapter
-from diffaero_lab.common.keys import EXTRA_TASK_TERMS
+from diffaero_lab.common.keys import EXTRA_SIM_STATE, EXTRA_TASK_TERMS
 
 
 class APGStochasticTrainer:
@@ -43,6 +39,7 @@ class APGStochasticTrainer:
             self._rollout()
             losses, grad_norms = self.apg.update_actor()
             self.apg.detach()
+            self.env.detach()
 
             if iteration % 10 == 0:
                 print(
@@ -51,21 +48,17 @@ class APGStochasticTrainer:
                 )
 
     def _rollout(self) -> None:
-        """Execute one rollout of the environment using stochastic policy gradient."""
+        """Execute one rollout and backpropagate the environment's differentiable loss."""
         batch = self.env.reset()
 
         for _ in range(self.rollout_horizon):
             action, policy_info = self.apg.act(batch.observations["policy"])
             batch.observations, rewards, terminated, truncated, batch.extras = self.env.step(action)
 
-            # policy_info["log_prob"] wires the loss through stochastic sampling
-            if EXTRA_TASK_TERMS in batch.extras:
-                task_terms = batch.extras[EXTRA_TASK_TERMS]
-                if "progress" in task_terms:
-                    loss = -task_terms["progress"].mean()
-                else:
-                    loss = -rewards.mean()
+            task_terms = batch.extras[EXTRA_TASK_TERMS]
+            sim_state = batch.extras.get(EXTRA_SIM_STATE, {})
+            dynamics = sim_state.get("dynamics", {}) if isinstance(sim_state, dict) else {}
+            if dynamics.get("tensor_backend") == "warp":
+                self.apg.record_loss(task_terms["loss"], policy_info, batch.extras)
             else:
-                loss = -rewards.mean()
-
-            self.apg.record_loss(loss, policy_info, batch.extras)
+                self.apg.record_policy_gradient_loss(rewards, policy_info)

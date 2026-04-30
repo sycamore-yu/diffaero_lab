@@ -7,7 +7,7 @@ import torch
 import warp as wp
 from torch import Tensor
 
-from diffaero_lab.env.tasks.direct.drone_racing.dynamics_bridge.base import DynamicsBridgeBase
+from diffaero_lab.tasks.direct.drone_racing.dynamics_bridge.base import DynamicsBridgeBase
 
 
 class QuadDynamicsBridge(DynamicsBridgeBase):
@@ -19,14 +19,10 @@ class QuadDynamicsBridge(DynamicsBridgeBase):
 
     def __init__(self, cfg: "DroneRacingEnvCfg", robot, num_envs: int, device: str):
         super().__init__(cfg, robot, num_envs, device)
-        self.thrust_scale = cfg.thrust_scale
-        self.moment_scale = cfg.moment_scale
         # Phase 1: motor_omega is always zero. No per-motor physics or motor model is simulated.
         self._motor_omega = torch.zeros(num_envs, 4, device=device)
         self._thrust_body = torch.zeros(num_envs, 1, 3, device=device)
         self._torque_body = torch.zeros(num_envs, 1, 3, device=device)
-        # Body index 0 = root body of Crazyflie SDF (single-body articulation)
-        self._body_id = torch.zeros(num_envs, 1, dtype=torch.int32, device=device)
 
     def reset(self, env_ids: Tensor) -> None:
         self._motor_omega[env_ids] = 0.0
@@ -34,21 +30,21 @@ class QuadDynamicsBridge(DynamicsBridgeBase):
         self._torque_body[env_ids] = 0.0
 
     def process_action(self, actions: Tensor) -> None:
-        self._action_buf = actions.clone()
+        # PhysX wrench composer passes tensors to Warp kernels via
+        # __cuda_array_interface__, which rejects grad-enabled tensors.
+        # Detach here; gradient signal comes from REINFORCE in the trainer.
+        self._action_buf = actions.clone().detach()
 
     def apply_to_sim(self) -> None:
         if self._action_buf is None:
             return
         actions = self._action_buf
-        roll = actions[:, 0] * self.thrust_scale
-        pitch = actions[:, 1] * self.thrust_scale
-        yaw = actions[:, 2] * self.thrust_scale
-        thrust = actions[:, 3] * self.thrust_scale
+        roll, pitch, yaw, thrust = self._map_quad_action(actions)
 
         self._thrust_body[:, 0, 2] = thrust
-        self._torque_body[:, 0, 0] = roll * self.moment_scale
-        self._torque_body[:, 0, 1] = pitch * self.moment_scale
-        self._torque_body[:, 0, 2] = yaw * self.moment_scale
+        self._torque_body[:, 0, 0] = roll
+        self._torque_body[:, 0, 1] = pitch
+        self._torque_body[:, 0, 2] = yaw
 
         self.robot.permanent_wrench_composer.set_forces_and_torques_index(
             body_ids=self._body_id, forces=self._thrust_body, torques=self._torque_body
@@ -63,10 +59,10 @@ class QuadDynamicsBridge(DynamicsBridgeBase):
         self._motor_omega[:, 2] = thrust - roll * 0.3 + pitch * 0.3  # FL motor
         self._motor_omega[:, 3] = thrust + roll * 0.3 - pitch * 0.3  # RR motor
         # Yaw correction: differential spin between CW and CCW motor pairs
-        self._motor_omega[:, 0] += yaw * self.moment_scale * 0.5
-        self._motor_omega[:, 1] += yaw * self.moment_scale * 0.5
-        self._motor_omega[:, 2] -= yaw * self.moment_scale * 0.5
-        self._motor_omega[:, 3] -= yaw * self.moment_scale * 0.5
+        self._motor_omega[:, 0] += yaw * 0.5
+        self._motor_omega[:, 1] += yaw * 0.5
+        self._motor_omega[:, 2] -= yaw * 0.5
+        self._motor_omega[:, 3] -= yaw * 0.5
 
     def read_base_state(self) -> dict[str, Tensor]:
         root_pos = wp.to_torch(self.robot.data.root_pos_w)
@@ -87,7 +83,7 @@ class QuadDynamicsBridge(DynamicsBridgeBase):
         return {
             "model_name": "quad",
             "state_layout_version": "1.0",
-            "quat_convention": "wxyz",
-            "tensor_backend": "torch",
+            "quat_convention": "xyzw",
+            "tensor_backend": "physx",
             "write_mode": "indexed",
         }

@@ -7,7 +7,7 @@
 import argparse
 import sys
 
-import diffaero_lab.env.tasks  # noqa: F401
+import diffaero_lab.tasks  # noqa: F401
 from diffaero_lab.algo.algorithms.sha2c import SHA2CConfig
 from diffaero_lab.algo.trainers.sha2c_trainer import SHA2CTrainer
 from diffaero_lab.algo.wrappers.env_adapter import DifferentialEnvAdapter

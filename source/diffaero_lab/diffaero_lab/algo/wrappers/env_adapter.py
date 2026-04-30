@@ -83,11 +83,11 @@ class DifferentialEnvAdapter:
         if cfg is None:
             # Use task-specific default config instead of hardcoding PhysX config
             if "Warp" in task_id:
-                from diffaero_lab.env.tasks.direct.drone_racing.drone_racing_env_warp_cfg import DroneRacingWarpEnvCfg
+                from diffaero_lab.tasks.direct.drone_racing.drone_racing_env_warp_cfg import DroneRacingWarpEnvCfg
 
                 cfg = DroneRacingWarpEnvCfg()
             else:
-                from diffaero_lab.env.tasks.direct.drone_racing.drone_racing_env_cfg import DroneRacingEnvCfg
+                from diffaero_lab.tasks.direct.drone_racing.drone_racing_env_cfg import DroneRacingEnvCfg
 
                 cfg = DroneRacingEnvCfg()
             cfg.scene.num_envs = 64
@@ -119,9 +119,7 @@ class DifferentialEnvAdapter:
             truncated: Truncation tensor of shape (num_envs,)
             extras: Dict with task_terms and sim_state
         """
-        action = action.clone()
-        action = torch.clamp(action, -1.0, 1.0)
-        action = action.detach()
+        action = torch.clamp(action.clone(), -1.0, 1.0)
         observations, rewards, terminated, truncated, extras = self.env.step(action)
         self._validate(observations, extras)
         return observations, rewards, terminated, truncated, extras
@@ -162,6 +160,13 @@ class DifferentialEnvAdapter:
         if self._action_scale is None:
             return action
         return self._action_scale * action + self._action_bias
+
+    def detach(self) -> None:
+        """Detach rollout state retained by the wrapped environment, when supported."""
+        unwrapped = getattr(self.env, "unwrapped", self.env)
+        detach_fn = getattr(unwrapped, "detach", None)
+        if callable(detach_fn):
+            detach_fn()
 
     def close(self) -> None:
         """Close the environment."""

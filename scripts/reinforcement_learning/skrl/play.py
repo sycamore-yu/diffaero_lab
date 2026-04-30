@@ -30,7 +30,7 @@ from isaaclab_rl.utils.pretrained_checkpoint import get_published_pretrained_che
 import isaaclab_tasks  # noqa: F401
 from isaaclab_tasks.utils import add_launcher_args, get_checkpoint_path, launch_simulation, resolve_task_config
 
-import diffaero_lab.env.tasks  # noqa: F401
+import diffaero_lab.tasks  # noqa: F401
 
 with contextlib.suppress(ImportError):
     import isaaclab_tasks_experimental  # noqa: F401

@@ -45,6 +45,7 @@ class SHACTrainer:
             self._rollout()
             losses, grad_norms = self.shac.update()
             self.shac.detach()
+            self.env.detach()
 
             if iteration % 10 == 0:
                 print(

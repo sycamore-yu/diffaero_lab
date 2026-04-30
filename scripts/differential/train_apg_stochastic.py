@@ -14,7 +14,7 @@ Usage:
 import argparse
 import sys
 
-import diffaero_lab.env.tasks  # noqa: F401
+import diffaero_lab.tasks  # noqa: F401
 from diffaero_lab.algo.algorithms.apg_stochastic import APGStochasticConfig
 from diffaero_lab.algo.trainers.apg_stochastic_trainer import APGStochasticTrainer
 from diffaero_lab.algo.wrappers.env_adapter import DifferentialEnvAdapter

@@ -49,6 +49,7 @@ class SHA2CTrainer:
             )
             actor_losses, actor_grad_norms = self.sha2c.update_actor()
             self.sha2c.detach()
+            self.env.detach()
 
             if iteration % 10 == 0:
                 print(

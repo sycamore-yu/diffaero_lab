@@ -41,6 +41,7 @@ class APGTrainer:
             self._rollout()
             losses, grad_norms = self.apg.update_actor()
             self.apg.detach()
+            self.env.detach()
 
             if iteration % 10 == 0:
                 print(
