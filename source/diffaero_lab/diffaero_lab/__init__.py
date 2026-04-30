@@ -3,14 +3,9 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
-"""
-Python module serving as a project/extension template.
-"""
+"""DiffAero Lab Isaac Lab extension."""
 
 import contextlib
 
 with contextlib.suppress(ImportError):
     from .tasks import *
-
-with contextlib.suppress(ImportError):
-    from .ui_extension_example import *

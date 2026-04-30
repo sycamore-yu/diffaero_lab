@@ -1,586 +1,647 @@
-# DiffAero 到 IsaacLab + Newton 迁移架构设计
+# DiffAero Isaac Lab + Newton Migration Spec
 
-## 1. 目标
+Status: active spec
+Last aligned: 2026-04-30
 
-本设计用于将 `refer/diffaero/` 迁移到 IsaacLab + Newton 环境，并保持如下目标：
+## 1. Purpose
 
-1. 采用 IsaacLab 官方推荐的 own-project 结构，在 `source/` 下组织多个 extension。
-2. 以 `drone_racing` 作为首个最小闭环任务。
-3. 同时支持 IsaacLab 现成 RL baseline 与自定义 differential learning 算法。
-4. 将环境、算法、共享契约、无人机平台能力解耦，支持后续扩展到更多无人机任务与多种动力学模型。
+This spec defines the migration of `refer/diffaero/` into the current Isaac Lab workspace at `source/diffaero_lab/`.
 
-## 2. 总体结论
+The target platform is a unified UAV research stack that supports:
 
-建议采用四个轻量 extension 的结构：
+1. Multiple UAV dynamics models: `quad`, `pmd`, `pmc`, and `simple`.
+2. Multiple training families: standard RL algorithms and differential algorithms.
+3. Multiple task scenes: racing first, then position control, obstacle avoidance, multi-agent position control, and map coverage.
+4. Shared assets and training facilities: drone assets, gate/track assets, dynamics parameters, controllers, motor models, logging, wrappers, and runnable training configs.
+5. A Newton/Warp route for differentiable physics experiments.
 
-```text
-source/
-├── diffaero_lab/
-```
+This document replaces the earlier four-extension design. The current project has already moved to a single installable Isaac Lab extension with internal domain packages, so future work must align to that structure.
 
-其中：
+## 2. External Documentation Confirmed
 
-- `diffaero_lab.env`：IsaacLab 任务 extension，负责 `DirectRLEnv`、任务配置、Gym 注册、任务语义与状态导出。
-- `diffaero_lab.algo`：differential learning extension，负责 `APG`、`APG_stochastic`、`SHAC`、`SHA2C`、trainer、buffer、wrapper。
-- `diffaero_lab.common`：共享 schema extension，负责 keys、capabilities、task terms schema、flatten adapter。
-- `diffaero_lab.uav`：无人机平台能力 extension，负责共享资产、airframe 参数、控制分配、电机模型、多动力学模型与平台适配。
+Isaac Lab and Newton design constraints were checked through Context7 on 2026-04-30:
 
-该组织方式符合 IsaacLab 文档中“一个 project 在 `source/` 下拥有多个 extensions”的推荐方向，也符合“自定义学习库通过 wrapper 接入 IsaacLab，必要时可以创建新的 wrapper module”的官方说明。
+- Isaac Lab custom direct tasks use a `DirectRLEnvCfg` configclass with `SimulationCfg`, `InteractiveSceneCfg`, robot/scene config, action/observation/state spaces, and task parameters.
+- Isaac Lab custom tasks register Gymnasium IDs from the task package `__init__.py`, with agent config entry points under `agents/`.
+- The Isaac Lab extension template installs an external project with `python -m pip install -e source/<extension_name>` and keeps `config/extension.toml` plus `setup.py` in the extension root.
+- Newton differentiability is exposed through Warp tape execution: finalize the Newton model with `requires_grad=True`, run simulation and loss kernels inside `wp.Tape()`, then call `tape.backward(loss)`.
+- Newton solver examples show `SolverSemiImplicit` as the straightforward differentiable path; MJWarp/Newton execution through Isaac Lab is a Warp-backed simulator route that still needs an explicit autograd bridge before PyTorch direct APG can receive simulator gradients.
 
-### 2.1 与当前 `diffaero_lab` 模板的关系
+Primary docs referenced by Context7:
 
-当前仓库仍然是单 extension 模板：`source/diffaero_lab/`。本设计采用“新建四包并逐步替换模板包”的迁移方式，而不是在 `diffaero_lab` 内继续堆叠所有逻辑。
+- Isaac Lab custom environment and Gym registration docs: <https://isaac-sim.github.io/IsaacLab/main/source/migration/migrating_from_omniisaacgymenvs.html>
+- Isaac Lab extension template: <https://github.com/isaac-sim/IsaacLabExtensionTemplate>
+- Newton solver and differentiability docs: <https://newton-physics.github.io/newton/latest/api/newton_solvers.html>
 
-迁移约定如下：
+## 3. Current Project Shape
 
-1. `source/diffaero_lab/` 作为模板遗留包，首阶段保留不动，用于避免迁移早期破坏当前工作区。
-2. 新的四个包作为并列的 net-new package 建立在 `source/` 下。
-3. 当 `drone_racing + RL baseline + APG` 跑通后，再决定是否删除、归档或保留 `diffaero_lab` 作为兼容壳层。
-4. 实施阶段默认按“四个独立可编辑安装 extension package”处理，四者都保留 `config/extension.toml + setup.py`，以贴近 IsaacLab own-project 在 `source/` 下组织多个 extension 的标准形态。
-
-## 3. 首发范围
-
-首发任务固定为 `drone_racing`，采用以下边界：
-
-- 环境主实现：`DirectRLEnv`
-- RL baseline：优先复用 IsaacLab 现成 RL 算法与训练脚本模式
-- differential learning：首版完成 `APG`、`APG_stochastic`、`SHAC`、`SHA2C`
-- 动力学后端：首版按 `quad -> pmd -> pmc -> simple` 顺序实现
-- 配置系统：任务配置树与算法配置树并列，运行时用 Hydra 组合
-
-## 4. 包职责与依赖方向
-
-### 4.1 依赖方向
-
-```text
-diffaero_lab.env   -> diffaero_lab.uav
-diffaero_lab.env   -> diffaero_lab.common
-diffaero_lab.algo  -> diffaero_lab.common
-diffaero_lab.algo  -> diffaero_lab.uav   # 尽量少，仅在需要平台元信息时使用
-```
-
-`diffaero_lab.algo` 通过 `gym.make(task_id)`、wrapper 与 `diffaero_lab.common` 接入环境，避免直接依赖具体任务实现文件。
-
-### 4.2 `diffaero_lab.env`
-
-建议结构：
+The active implementation is one Isaac Lab extension package:
 
 ```text
 source/diffaero_lab/
 ├── config/extension.toml
 ├── setup.py
+├── pyproject.toml
 └── diffaero_lab/
-    ├── __init__.py
-    ├── env/
-    │   └── tasks/
-    │       └── direct/
-    │           └── drone_racing/
-    │               ├── __init__.py
-    │               ├── drone_racing_env.py
-    │               ├── drone_racing_env_cfg.py
-    │               ├── dynamics_bridge/
-    │               ├── scene/
-    │               ├── mdp/
-    │               ├── state/
-    │               └── agents/
-    └── utils/
-```
-
-职责：
-
-- 实现 `DirectRLEnv`
-- 注册 Gym task ID
-- 组织 scene、reset、action、done、reward
-- 导出 `observations[OBS_POLICY]`、`observations[OBS_CRITIC]`、`extras[EXTRA_TASK_TERMS]`、`extras[EXTRA_SIM_STATE]`
-
-### 4.3 `diffaero_lab.algo`
-
-建议结构：
-
-```text
-source/diffaero_lab/
-├── config/extension.toml
-├── setup.py
-└── diffaero_lab/
-    ├── __init__.py
     ├── algo/
-    │   ├── algorithms/
-    │   ├── trainers/
-    │   ├── buffers/
-    │   ├── wrappers/
-    │   ├── models/
-    │   └── configs/
-```
-
-职责：
-
-- 实现 `APG`、`APG_stochastic`、`SHAC`、`SHA2C`
-- 实现 rollout / unroll、loss 组装、detach 策略、梯度裁剪
-- 提供 differential wrapper 与训练入口
-
-### 4.4 `diffaero_lab.common`
-
-建议结构：
-
-```text
-source/diffaero_lab/
-├── config/extension.toml
-├── setup.py
-└── diffaero_lab/
-    ├── __init__.py
-    └── common/
-        ├── __init__.py
-        ├── keys.py
-        ├── capabilities.py
-        ├── terms.py
-        └── adapters/
-            ├── flatten.py
-            └── sim_state.py
-```
-
-职责：
-
-- 统一 key 名、capability 名、task terms schema
-- 提供 `sim_state` flatten / unflatten adapter
-- 保持任务无关、算法无关、平台无关
-
-安装属性：
-
-- `diffaero_lab.common` 仍然保持"极小共享层"的职责。
-- 为了与 IsaacLab own-project 结构保持一致，它作为轻量 extension 存在，但不承担 Gym 注册、环境生命周期或训练脚本职责。
-- 该 extension 只暴露共享 schema、adapter 和常量定义。
-
-### 4.5 `diffaero_lab.uav`
-
-建议结构：
-
-```text
-source/diffaero_lab/
-├── config/extension.toml
-├── setup.py
-└── diffaero_lab/
-    ├── __init__.py
+    ├── common/
+    ├── tasks/
     └── uav/
-        ├── __init__.py
-        ├── assets/
-    │   ├── drone_assets.py
-    │   ├── airframes.py
-    │   └── sensors.py
-    ├── dynamics/
-    │   ├── __init__.py
-    │   ├── base.py
-    │   ├── registry.py
-    │   ├── allocation.py
-    │   ├── motor.py
-    │   ├── quadrotor.py
-    │   ├── pointmass_discrete.py
-    │   ├── pointmass_continuous.py
-    │   ├── simplified_quadrotor.py
-    │   └── controller.py
-    ├── control/
-    ├── params/
-    └── adapters/
-        ├── isaaclab.py
-        └── newton.py
 ```
 
-职责：
+The canonical installation unit is:
 
-- 放置跨任务复用的无人机资产与 airframe 参数
-- 放置共享控制分配、电机模型与多动力学模型
-- 为 IsaacLab 与 Newton 提供平台级适配能力
+```bash
+python -m pip install -e source/diffaero_lab
+```
 
-其中：
+The internal package boundaries are:
 
-- `isaaclab.py`：负责把 `diffaero_lab.uav` 的平台参数、动力学能力、控制分配接到 IsaacLab 环境与 bridge。
-- `newton.py`：负责把同一批平台参数与动力学元信息接到 Newton 可微物理相关的 differential trainer 或 solver adapter。
-- 这两个文件都属于平台适配层，因此放在 `diffaero_lab.uav`，而不是 `diffaero_lab.common`。
+| Package | Responsibility |
+|---|---|
+| `diffaero_lab.tasks` | Isaac Lab task registration, environment lifecycle, task scenes, MDP functions, observation/reward/done/reset semantics |
+| `diffaero_lab.uav` | UAV platform assets, dynamics models, controllers, motor models, allocation logic, Isaac Lab/Newton adapters |
+| `diffaero_lab.algo` | Differential algorithms, trainers, wrappers, and algorithm configs |
+| `diffaero_lab.common` | Shared observation/extras keys, task terms, capabilities, flattening/state adapters |
 
-## 5. `drone_racing` 任务设计
+The project keeps Isaac Lab extension packaging at the top level and uses internal packages for domain separation.
 
-### 5.1 单任务语义 + 多动力学后端
+## 4. Migration Target
 
-`drone_racing` 保持单一任务入口，不为每种动力学复制一套环境。通过 `dynamics_bridge/` 实现动力学切换。
+The migrated platform should preserve DiffAero's research breadth while adopting Isaac Lab's environment lifecycle and extension conventions.
 
-建议结构：
+### 4.1 Source-to-target mapping
+
+| Source area | Target area |
+|---|---|
+| `refer/diffaero/env/racing.py` | `diffaero_lab.tasks.direct.drone_racing` |
+| `refer/diffaero/env/position_control.py` | future `diffaero_lab.tasks.direct.position_control` |
+| `refer/diffaero/env/obstacle_avoidance.py` | future `diffaero_lab.tasks.direct.obstacle_avoidance` |
+| `refer/diffaero/env/position_control_multi_agent.py` | future `diffaero_lab.tasks.direct.position_control_multi_agent` |
+| `refer/diffaero/dynamics/quadrotor.py` | `diffaero_lab.uav.dynamics.quadrotor` |
+| `refer/diffaero/dynamics/pointmass.py` | `diffaero_lab.uav.dynamics.pointmass_discrete` and `pointmass_continuous` |
+| `refer/diffaero/dynamics/controller.py` | `diffaero_lab.uav.dynamics.controller` |
+| `refer/diffaero/algo/APG.py` | `diffaero_lab.algo.algorithms.apg` |
+| `refer/diffaero/algo/SHAC.py` | `diffaero_lab.algo.algorithms.shac` |
+| `refer/diffaero/algo/MASHAC.py` | future multi-agent trainer family |
+| `refer/diffaero/cfg/**` | task and algorithm config files under `diffaero_lab.tasks/**/agents` and `diffaero_lab.algo/configs` |
+| `refer/isaac_drone_racer/assets/**` | `diffaero_lab.uav.assets/**` |
+| `refer/isaac_drone_racer/tasks/drone_racer/**` | `diffaero_lab.tasks.direct.drone_racing/**` |
+
+### 4.2 First production slice
+
+The first supported vertical slice is:
 
 ```text
-tasks/direct/drone_racing/
+drone_racing task
++ Crazyflie/5-inch drone asset path
++ gate/track assets
++ quad/pmd/pmc/simple dynamics selection
++ PhysX RL route
++ Newton/Warp experimental route
++ APG/APG stochastic/SHAC/SHA2C training contracts
+```
+
+## 5. Task Architecture
+
+`drone_racing` is implemented as a direct Isaac Lab task:
+
+```text
+source/diffaero_lab/diffaero_lab/tasks/direct/drone_racing/
+├── __init__.py
+├── agents/
+│   └── skrl_ppo_cfg.yaml
 ├── drone_racing_env.py
 ├── drone_racing_env_cfg.py
+├── drone_racing_env_warp_cfg.py
 ├── dynamics_bridge/
-│   ├── base.py
-│   ├── quad.py
-│   ├── pointmass_discrete.py
-│   ├── pointmass_continuous.py
-│   └── simplified_quad.py
-├── scene/
 ├── mdp/
 ├── state/
-└── agents/
+└── track_generator.py
 ```
 
-### 5.2 `dynamics_bridge` 统一接口
+### 5.1 Registered task IDs
 
-建议桥接接口包含：
+Current task IDs:
 
-- `reset(env_ids)`
-- `process_action(action)`
-- `apply_to_sim()`
-- `read_base_state()`
-- `read_motor_state()`
-- `read_dynamics_info()`
+| Task ID | Physics route | Config |
+|---|---|---|
+| `Isaac-Drone-Racing-Direct-v0` | PhysX | `DroneRacingEnvCfg` |
+| `Isaac-Drone-Racing-Direct-Warp-v0` | Isaac Lab Newton/MJWarp | `DroneRacingWarpEnvCfg` |
 
-环境主类通过 `DirectRLEnv` 生命周期驱动 bridge：
+The task IDs share the same `DroneRacingEnv` class and diverge through config and backend adapter selection.
 
-- `_pre_physics_step()` 中调用 `process_action(action)`
-- `_apply_action()` 中调用 `apply_to_sim()`
-- `_get_observations()`、`_get_rewards()`、`_get_dones()` 中读取 `read_base_state()` 等缓存结果
+### 5.2 Environment lifecycle
 
-环境主类只负责任务语义，不直接持有第二套环境主循环。
+`DroneRacingEnv` owns the Isaac Lab `DirectRLEnv` lifecycle:
 
-桥接接口到 contract 字段的映射固定如下：
+1. `_setup_scene()` creates robot, ground, lights, track state, and the dynamics bridge.
+2. `_pre_physics_step(actions)` stores actions and calls `bridge.process_action(actions)`.
+3. `_apply_action()` calls `bridge.apply_to_sim()`.
+4. `_get_observations()` reads bridge state and builds policy/critic observations.
+5. `_get_rewards()` computes reward terms, updates gate progress, and writes `extras`.
+6. `_get_dones()` evaluates gate failure, out-of-bounds, and timeout conditions.
+7. `_reset_idx()` resets Isaac Lab state, task-local gate state, bridge state, and cached tensors.
 
-| bridge 方法 | contract 输出字段 |
-|---|---|
-| `read_base_state()` | `position_w`、`quaternion_w`、`linear_velocity_w`、`angular_velocity_b` |
-| `read_motor_state()` | `motor_omega` |
-| `read_dynamics_info()` | `dynamics.model_name`、`dynamics.state_layout_version`、`tensor_backend`、`write_mode` |
+The environment creates exactly one simulation context through Isaac Lab. Dynamics bridges are adapters inside that environment lifecycle.
 
-`sim_state.py` 负责把这些 bridge 输出与任务语义字段一起组装成最终 `extras[EXTRA_SIM_STATE]`。
+### 5.3 Dynamics bridge contract
 
-## 6. 环境与算法之间的 contract
-
-### 6.1 标准观测与扩展输出
-
-环境标准输出：
+Every dynamics route exposed by `drone_racing` must implement:
 
 ```python
-observations = {"policy": ...}
-observations = {"policy": ..., "critic": ...}  # optional
+reset(env_ids)
+process_action(actions)
+apply_to_sim()
+read_base_state()
+read_motor_state()
+read_dynamics_info()
+detach()
+```
+
+Required base-state fields:
+
+```text
+position_w
+quaternion_w
+linear_velocity_w
+angular_velocity_b
+```
+
+Required motor-state fields:
+
+```text
+motor_omega
+```
+
+Required dynamics metadata:
+
+```text
+model_name
+state_layout_version
+tensor_backend
+write_mode
+quat_convention
+```
+
+The bridge hides whether state came from PhysX tensors, Newton/Warp arrays, or a torch-only analytical dynamics model.
+
+## 6. Shared Contract Between Environments and Algorithms
+
+Environment outputs use Isaac Lab/Gymnasium conventions plus shared `extras`.
+
+### 6.1 Observations
+
+Standard observation keys:
+
+| Key | Meaning |
+|---|---|
+| `policy` | Actor observation |
+| `critic` | Critic/state observation when `state_space > 0` |
+
+Current racing policy observation is 13-dimensional:
+
+```text
+target_position_relative_w: 3
+linear_velocity_w: 3
+angular_velocity_b: 3
+next_target_position_relative_w: 3
+next_target_yaw_relative: 1
+```
+
+### 6.2 Extras
+
+Standard extras keys:
+
+| Key | Meaning |
+|---|---|
+| `task_terms` | Reward/loss terms with stable names |
+| `sim_state` | Backend-normalized simulator state and dynamics metadata |
+| `capabilities` | Optional feature flags advertised by the environment |
+| `dynamics` | Optional shorthand dynamics metadata |
+| `state_before_reset` | Optional reset bookkeeping |
+| `terminal_state` | Optional terminal-state snapshot |
+
+### 6.3 Task terms
+
+Canonical task terms:
+
+```text
+progress
+tracking_error
+gate_pass
+collision
+terminal
+control_effort
+control_smoothness
+angular_rate
+time_penalty
+loss
 reward
-terminated
-truncated
 ```
 
-环境扩展输出：
+`loss` is the algorithm-facing differential objective. `reward` is the RL/logging objective.
 
-```python
-extras = {
-    EXTRA_TASK_TERMS: {...},
-    EXTRA_SIM_STATE: {...},
-    EXTRA_CAPABILITIES: {...},
-    EXTRA_DYNAMICS_INFO: {...},
-}
-```
+### 6.4 Sim state
 
-### 6.2 `keys.py`
-
-建议定义：
-
-```python
-OBS_POLICY = "policy"
-OBS_CRITIC = "critic"
-
-EXTRA_TASK_TERMS = "task_terms"
-EXTRA_SIM_STATE = "sim_state"
-EXTRA_CAPABILITIES = "capabilities"
-EXTRA_DYNAMICS_INFO = "dynamics"
-EXTRA_RESET_STATE = "state_before_reset"
-EXTRA_TERMINAL_STATE = "terminal_state"
-```
-
-### 6.3 `capabilities.py`
-
-建议定义：
-
-```python
-SUPPORTS_CRITIC_STATE = "supports_critic_state"
-SUPPORTS_SIM_STATE = "supports_sim_state"
-SUPPORTS_TASK_TERMS = "supports_task_terms"
-SUPPORTS_TERMINAL_STATE = "supports_terminal_state"
-SUPPORTS_DIFFERENTIAL_ROLLOUT = "supports_differential_rollout"
-SUPPORTS_DYNAMICS_SWITCH = "supports_dynamics_switch"
-SUPPORTS_WARP_BACKEND = "supports_warp_backend"
-```
-
-### 6.4 `terms.py`
-
-`drone_racing` 首版建议统一以下 task terms：
-
-- `progress`
-- `tracking_error`
-- `gate_pass`
-- `collision`
-- `terminal`
-- `control_effort`
-- `control_smoothness`
-- `angular_rate`
-- `time_penalty`
-
-环境负责产出这些标准化项，算法层负责按训练目标组装 loss。
-
-### 6.5 `sim_state` schema
-
-采用“公共字段 + 模型特有字段 + 动力学元信息”的结构。
-
-公共字段建议至少包含：
-
-- `position_w`
-- `linear_velocity_w`
-- `target_position_w`
-- `last_action`
-- `progress`
-- `step_count`
-
-完整四旋翼模型可额外提供：
-
-- `quaternion_w`
-- `angular_velocity_b`
-- `motor_omega`
-- `thrust_body`
-- `torque_body`
-
-点质量模型可额外提供：
-
-- `heading`
-- `acceleration_w`
-
-动力学元信息建议至少包含：
-
-- `model_name`
-- `state_layout_version`
-- `quat_convention`
-- `tensor_backend`
-- `write_mode`
-
-约定如下：
-
-- `quat_convention` 明确记录 `wxyz` 或 `xyzw`
-- `tensor_backend` 明确记录 `torch` 或 `warp`
-- `write_mode` 明确记录 `indexed` 或 `masked`
-
-在 PhysX 路线中，首版默认输出 `torch` tensor；在 Newton / Warp 路线中，adapter 层负责处理 `wp.to_torch()` 或保持 warp-native 数据流。
-
-## 7. 训练入口组织
-
-### 7.1 RL baseline
-
-RL baseline 在本设计中专指 IsaacLab 已集成的学习库，即 `refer/IsaacLab/source/isaaclab_rl/` 下已经支持的框架，例如 `rsl_rl`、`skrl`、`rl_games`、`sb3`。
-
-脚本目录：
+Required common `sim_state` fields:
 
 ```text
-scripts/reinforcement_learning/
-├── rsl_rl/
-├── skrl/
-├── rl_games/
-└── sb3/
+position_w
+quaternion_w
+linear_velocity_w
+angular_velocity_b
+motor_omega
+step_count
+last_action
+progress
+target_position_w
+dynamics
 ```
 
-运行链路：
+The `dynamics` sub-dict owns layout metadata. Quaternion convention must be explicit because current code has both `xyzw` and `wxyz` assumptions in different helpers.
+
+Spec requirement:
 
 ```text
-task id
--> hydra_task_config(...)
--> gym.make(task_id, cfg=env_cfg)
--> isaaclab_rl wrapper
--> integrated RL library
+Runtime sim_state from live bridges must report the convention used by the source tensor.
+Common adapters must normalize only when explicitly requested by the caller.
 ```
 
-RL baseline 只消费：
+## 7. UAV Platform Asset Spec
 
-- `observations[OBS_POLICY]`
-- `observations[OBS_CRITIC]`，当对应集成算法支持 asymmetric actor-critic 时
-- `reward`
-- `terminated / truncated`
+`diffaero_lab.uav` is the platform layer for reusable UAV assets and physical models.
 
-RL baseline 的 agent 配置保持 task-local，放在 `diffaero_lab.env/tasks/direct/drone_racing/agents/`，并通过 `gym.register(..., kwargs={"rsl_rl_cfg_entry_point": ..., "skrl_cfg_entry_point": ...})` 暴露给 IsaacLab 默认训练脚本。
+### 7.1 Asset classes
 
-### 7.2 Differential learning
+Assets are grouped by semantic role:
 
-脚本目录：
+| Asset class | Examples | Target location |
+|---|---|---|
+| Drone models | Crazyflie, 5-inch drone USD/URDF/mesh | `diffaero_lab/uav/assets/drones/` |
+| Racing gates | `gate.usd`, textures, collision geometry | `diffaero_lab/uav/assets/gates/` |
+| Track definitions | generated gate layouts and named courses | task-local `track_generator.py` plus reusable course configs |
+| Sensor payloads | camera, lidar, IMU metadata | future `diffaero_lab/uav/assets/sensors/` |
+| Scene assets | ground, obstacles, rooms, outdoor maps | future `diffaero_lab/uav/assets/scenes/` |
+
+Current state:
+
+- Gate assets from `refer/isaac_drone_racer/assets/gate` have been copied to `source/diffaero_lab/diffaero_lab/uav/assets/gate`.
+- Racing now uses `CRAZYFLIE_CFG` from the local `diffaero_lab.uav.assets` catalog, backed by the mirrored OmniDrones Crazyflie USD.
+- The 5-inch drone asset from `refer/isaac_drone_racer/assets/5_in_drone` should be migrated into `uav/assets/drones/five_in/` before it becomes a supported platform option.
+
+### 7.2 Asset metadata
+
+Each reusable drone asset must define:
 
 ```text
-scripts/differential/
-├── train_apg.py
-├── train_apg_stochastic.py
-├── train_shac.py
-├── train_sha2c.py
-└── eval.py
+asset_id
+display_name
+usd_path
+urdf_path optional
+mesh_paths optional
+body_name
+rotor_joint_names
+mass
+inertia
+rotor_layout
+motor_model_id
+controller_defaults
+sensor_mounts
+supported_physics_routes
+license/source
 ```
 
-运行链路：
+Each reusable scene asset must define:
 
 ```text
-task id
--> hydra(task_cfg, algo_cfg)
--> gym.make(task_id, cfg=env_cfg)
--> differential env adapter
--> rollout / horizon unroll
--> task terms + sim_state + critic_state
--> loss assembly
--> backward
+asset_id
+asset_type
+usd_path or generator
+collision_enabled
+visual_enabled
+scale
+frame_convention
+license/source
 ```
 
-`diffaero_lab.algo/wrappers/` 负责：
+Assets imported from `refer/` must retain source attribution in metadata.
 
-- 检查 capability
-- 读取 `observations[OBS_POLICY]` / `observations[OBS_CRITIC]` / `extras[EXTRA_TASK_TERMS]` / `extras[EXTRA_SIM_STATE]`
-- 根据 `model_name` 做 flatten / unflatten
-- 处理 `state_before_reset` 与 `terminal_state`
+## 8. UAV Dynamics, Controller, and Motor Spec
 
-RL wrapper 约定如下：
+### 8.1 Dynamics model registry
 
-- 对 IsaacLab 已支持的 RL 库，优先直接使用 `isaaclab_rl` 中现成 wrapper。
-- 只有当某个 RL baseline 需要额外字段时，才在 `diffaero_lab.env/tasks/.../agents/` 或 `scripts/reinforcement_learning/` 中添加薄包装层。
-- 因此 `task id -> gym.make -> isaaclab_rl wrapper -> RL library` 是首版默认路径。
-- 按 IsaacLab wrapper 约定，learning-framework wrapper 必须放在 wrapper 链最后一层；differential wrapper 也沿用这一规则。
+`diffaero_lab.uav.dynamics.registry` is the canonical lookup point for dynamics models.
 
-## 8. 配置组织
+Supported model names:
 
-采用“任务配置树 + 算法配置树并列 + Hydra 运行时组合”。
+| Name | Meaning | Route |
+|---|---|---|
+| `quad` | Full quadrotor wrench/body dynamics | PhysX and Newton/Warp adapter route |
+| `pmd` | Point-mass discrete dynamics | torch analytical dynamics bridge |
+| `pmc` | Point-mass continuous dynamics | torch analytical dynamics bridge |
+| `simple` | Simplified quadrotor dynamics | torch analytical dynamics bridge |
 
-环境侧：
+Spec requirements:
 
-- `drone_racing_env_cfg.py`
-- `agents/` 下放 RL baseline 配置入口
+1. Model names are stable public config values.
+2. Each model exports a common base-state layout.
+3. Backend-specific state fields live under namespaced metadata or optional model fields.
+4. Task code selects by `cfg.dynamics_model`.
+5. Training code reads capability and backend metadata from `extras`, then chooses objective mode.
 
-建议最小配置树如下：
+### 8.2 Controller and allocation
+
+Controller code belongs in `diffaero_lab.uav.dynamics.controller`.
+
+Allocation code belongs in `diffaero_lab.uav.dynamics.allocation`.
+
+The controller stack must separate:
 
 ```text
-env:
-  task: drone_racing
-  dynamics_model: quad
-  sensor_mode: state
-  num_envs: 4096
-algo:
-  name: apg
-  rollout_horizon: 32
-  optimizer:
-    lr: 3e-4
-runtime:
-  headless: true
-  device: cuda:0
+policy action
+-> action normalization
+-> controller target or wrench command
+-> allocation to motor thrusts
+-> motor dynamics
+-> simulator write
 ```
 
-算法侧：
+This separation allows the same policy/action contract to run through PhysX, analytical torch dynamics, and Newton/Warp experiments.
+
+### 8.3 Motor dynamics
+
+Motor dynamics belongs in `diffaero_lab.uav.dynamics.motor`.
+
+Each motor model must specify:
 
 ```text
-diffaero_lab.algo/configs/
-├── apg/
-├── apg_stochastic/
-├── shac/
-└── sha2c/
+motor_model_id
+input_unit
+output_unit
+time_constant
+thrust_coefficient
+torque_coefficient
+min_omega
+max_omega
+spin_directions
 ```
 
-环境配置中建议显式加入：
+The bridge should expose `motor_omega` in `sim_state` even when the backend approximates it.
 
-- `dynamics_model: quad | pmd | pmc | simple`
-- `sensor_mode: state | lidar | camera`
+## 9. Training Facility Spec
 
-职责分工约定如下：
+### 9.1 RL algorithms
 
-- Gym registry + task-local `agents/`：负责 IsaacLab 已集成 RL baseline 的发现与默认配置入口
-- Hydra：负责 `env.*`、`agent.*`、`algo.*` 等运行时覆盖
-- `diffaero_lab.algo/configs/`：主要服务 APG / APG_stochastic / SHAC / SHA2C 这类自定义 differential learning 配置树
+Standard RL uses Isaac Lab-compatible task IDs and agent configs:
 
-## 9. 参考仓库迁移映射
+```text
+tasks/direct/<task>/agents/*.yaml
+```
 
-### 9.0 与当前脚本目录的过渡
+Current racing config:
 
-当前仓库已有 `scripts/skrl/`。迁移阶段采用以下处理：
+```text
+source/diffaero_lab/diffaero_lab/tasks/direct/drone_racing/agents/skrl_ppo_cfg.yaml
+```
 
-1. 保留现有 `scripts/skrl/` 不动，作为历史脚本参考。
-2. 新增 `scripts/reinforcement_learning/` 与 `scripts/differential/` 作为目标结构。
-3. 当新的 RL 入口稳定后，再决定是否将 `scripts/skrl/` 合并、重定向或删除。
+RL algorithms treat simulator state as sampled environment transitions. Their gradient source is reward-weighted policy likelihood or value learning.
 
-### 9.1 可直接复制的部分
+### 9.2 Differential algorithms
 
-| 来源 | 去向 |
+Differential algorithms live under:
+
+```text
+diffaero_lab.algo.algorithms
+diffaero_lab.algo.trainers
+diffaero_lab.algo.wrappers
+diffaero_lab.algo.configs
+```
+
+Current algorithm modules:
+
+```text
+apg.py
+apg_stochastic.py
+shac.py
+sha2c.py
+actor_critic.py
+```
+
+Differential trainers must choose one objective route:
+
+| Route | Gradient source | Backend requirement |
+|---|---|---|
+| Direct APG | `task_terms["loss"] -> simulator state -> action -> actor` | Differentiable simulator path connected to actor parameters |
+| Score-function PG | `log_prob * reward/advantage` | Any sampled environment |
+| Hybrid | differentiable reward/model terms plus sampled simulator transitions | Explicit trainer config |
+
+The route must be selected by explicit capability metadata. `tensor_backend` describes simulator memory/backend shape.
+
+## 10. Newton/Warp Differentiability Spec
+
+### 10.1 Current finding
+
+The current racing Newton/Warp route lacks a direct PyTorch gradient from actor action to simulator state.
+
+The analysis in:
+
+```text
+/home/tong/.gemini/antigravity/brain/7de4b4ed-ed21-447b-8a45-5ac29d390502/gradient_analysis.md
+```
+
+identifies three breakpoints:
+
+1. `NewtonBackendAdapter.process_action()` stores `actions.clone().detach()`.
+2. `warp.to_torch()` returns torch views outside the PyTorch autograd graph.
+3. `APGStochasticTrainer` currently maps `tensor_backend == "warp"` to direct APG loss.
+
+The key mismatch:
+
+```text
+Direct APG expects:
+actor -> torch action -> differentiable physics -> torch state -> torch loss -> backward
+
+Current MJWarp route provides:
+actor -> torch action -> detached adapter/write -> Warp simulation -> torch view outside autograd -> torch loss
+```
+
+### 10.2 Immediate route
+
+Warp/Newton racing training should use score-function policy gradient until an explicit autograd bridge exists.
+
+Trainer selection rule:
+
+```text
+if extras.capabilities.supports_differential_rollout is true:
+    use direct differential objective
+else:
+    use score-function or RL objective
+```
+
+For the current `Isaac-Drone-Racing-Direct-Warp-v0` route:
+
+```text
+tensor_backend = "warp"
+supports_differential_rollout = false
+recommended_objective = "score_function_pg"
+```
+
+### 10.3 Correct direct-differentiable route
+
+The direct Newton route requires a Newton/Warp-owned differentiable rollout module.
+
+Required design:
+
+1. Build the Newton model with `requires_grad=True`.
+2. Use a solver with confirmed differentiability for the target rigid-body route; start with `SolverSemiImplicit` for minimal differentiable tests.
+3. Allocate differentiable state/control arrays in Warp.
+4. Run rollout and loss computation inside `wp.Tape()`.
+5. Call `tape.backward(loss)`.
+6. Expose gradients to the optimizer through one of two explicit integration modes:
+   - Warp-owned optimizer updates Warp parameters directly.
+   - Custom `torch.autograd.Function` maps torch actions/parameters to Warp arrays in forward and returns Warp tape gradients in backward.
+
+The second mode is the required path for PyTorch APG/SHAC trainers to optimize PyTorch actors through Newton simulation.
+
+### 10.4 Differentiability milestones
+
+| Milestone | Acceptance criteria |
 |---|---|
-| `refer/isaac_drone_racer/dynamics/allocation.py` | `diffaero_lab.uav/dynamics/allocation.py` |
-| `refer/isaac_drone_racer/dynamics/motor.py` | `diffaero_lab.uav/dynamics/motor.py` |
-| `refer/diffaero/dynamics/base_dynamics.py` | `diffaero_lab.uav/dynamics/base.py` |
-| `refer/diffaero/dynamics/quadrotor.py` | `diffaero_lab.uav/dynamics/quadrotor.py` |
-| `refer/diffaero/dynamics/pointmass.py` | 拆到 `pointmass_discrete.py` 与 `pointmass_continuous.py` |
-| `refer/diffaero/algo/` 中四个 differential algorithms 的核心逻辑 | `diffaero_lab.algo/algorithms/` 与 `trainers/` |
+| D0: Current Warp smoke | `Isaac-Drone-Racing-Direct-Warp-v0` runs and trains through score-function gradients |
+| D1: Newton particle gradient fixture | Minimal Newton example proves `wp.Tape()` gradients through state/control |
+| D2: Single-step quad wrench gradient | One quad state step produces nonzero gradient w.r.t. control |
+| D3: Torch autograd bridge | `torch.autograd.grad(loss, action)` is nonzero through a custom bridge |
+| D4: Racing short-horizon APG | Direct APG on racing reports nonzero actor gradient through simulator state |
+| D5: SHAC/SHA2C rollout | Critic-assisted direct rollout works with controlled truncation/detach policy |
 
-### 9.2 复制后重构的部分
+### 10.5 Solver policy
 
-| 来源 | 处理方式 |
+Newton solver selection must be documented per experiment:
+
+| Solver | Role in this project |
 |---|---|
-| `refer/isaac_drone_racer/tasks/drone_racer/` | 保留任务骨架，按 `DirectRLEnv` 与 `dynamics_bridge` 重组 |
-| `refer/diffaero/env/` | 抽取 racing 任务语义、loss term、state 语义，拆到 `mdp/` 与 `state/` |
-| `refer/diffaero/cfg/` | 转换成 Hydra 配置树 |
-| `refer/diffaero/network/` | 重组到 `diffaero_lab.algo/models/` |
-| `AgileFlight_MultiAgent` 的 wrapper 与 trainer 组织 | 吸收 contract 分层方式，不直接继承实现 |
+| `SolverSemiImplicit` | First differentiability fixture and simple rigid-body gradient path |
+| `SolverMuJoCo` / MJWarp | High-performance Isaac Lab Newton route, currently experimental for direct PyTorch gradients |
+| `SolverXPBD` | Candidate for non-smooth/contact-heavy scenes after gradient behavior is proven |
+| `SolverFeatherstone` | Candidate for articulated dynamics experiments |
 
-### 9.3 优先评估 IsaacLab 现成多旋翼组件
+The racing spec treats Newton/MJWarp as an experimental simulator backend until the bridge milestones above are complete.
 
-在实现 `diffaero_lab.uav` 前，先评估 `isaaclab_contrib` 中已有的多旋翼能力是否可复用，包括：
+## 11. Scene and Task Asset Spec
 
-- `Multirotor` / `MultirotorCfg`
-- `ThrustAction` / `ThrustActionCfg`
-- thruster 相关 actuator 与 data container
+### 11.1 Racing scene
 
-评估原则如下：
-
-1. 能满足 `drone_racing` 首版环境与 RL baseline 需求的部分优先复用。
-2. 无法覆盖 `diffaero` 所需 allocation、motor delay、多动力学切换或 differential learning 契约的部分，再在 `diffaero_lab.uav` 中补齐。
-3. `diffaero_lab.uav` 作为增强层，优先建立在 IsaacLab 已有能力之上，减少纯重复实现。
-
-## 10. 首版实现顺序
-
-1. 建立四包骨架与脚本入口。
-2. 迁入 `drone_racing` 任务骨架并完成 Gym 注册。
-3. 迁入 `diffaero_lab.uav` 平台能力与多动力学模型。
-4. 打通 RL baseline。
-5. 打通 `APG` 最小可微闭环。
-6. 扩展到 `APG_stochastic`、`SHAC`、`SHA2C`。
-7. 扩展到 `pmd`、`pmc`、`simple` 等动力学后端。
-
-建议的实现顺序为：
+Racing owns task-specific track semantics:
 
 ```text
-PhysX + RL baseline -> PhysX + APG -> PhysX + APG_stochastic / SHAC / SHA2C -> Warp/Newton + APG
-quad -> pmd -> pmc -> simple
+gate order
+gate crossing plane
+gate opening/collision rule
+target gate
+next target gate
+progress and terminal conditions
 ```
 
-## 11. 验收标准
+`track_generator.py` should generate Isaac Lab scene objects from reusable gate assets.
 
-当首版达到以下状态时，说明架构骨架已经成立：
+The canonical gate pass rule should match the current implementation:
 
-1. `drone_racing` 能通过 Gym ID 创建。
-2. RL baseline 能训练并 rollout。
-3. `APG` 能完成可微 rollout 与 backward。
-4. `sim_state` 能在 `quad` 与至少一种 point-mass 模型下工作。
-5. `SHAC / SHA2C` 能读取 `critic_state` 并运行。
-6. Hydra 能组合 `task + dynamics_model + algo`。
+1. A drone passes the gate when its segment crosses the gate plane from the previous position to the current position.
+2. The crossing point must lie inside the gate opening under the configured L1 radius.
+3. A plane crossing outside the opening is a gate collision.
 
-建议的任务 ID 规划为：
+### 11.2 Future scenes
 
-- `Isaac-Drone-Racing-Direct-v0`：PhysX / 默认路线
-- `Isaac-Drone-Racing-Direct-Warp-v0`：Warp / Newton 实验路线
+Future tasks should follow the same layout:
 
-## 12. 风险与约束
+```text
+tasks/direct/<task_name>/
+├── __init__.py
+├── agents/
+├── <task_name>_env.py
+├── <task_name>_env_cfg.py
+├── mdp/
+├── state/
+└── scene or generator files
+```
 
-### 12.1 需要控制的风险
+Candidate migrations:
 
-1. IsaacLab 环境主循环与可微 dynamics 后端的职责边界混乱。
-2. reward 与 differential loss 混在环境主类里。
-3. `sim_state` 在多动力学模型下缺乏稳定 schema。
-4. RL wrapper 与 differential wrapper 反向污染环境实现。
-5. Newton / Warp 仍处于实验特性阶段，后端 API、四元数约定与数据类型转换存在持续变化。
+| DiffAero task | Target task | Notes |
+|---|---|---|
+| `pc` | `position_control` | minimal dynamics/algorithm benchmark |
+| `oa` / `oa_small` | `obstacle_avoidance` | scene assets and collision semantics required |
+| `mapc` | `map_coverage` | multi-agent and coverage metrics required |
+| `racing` | `drone_racing` | active first slice |
 
-### 12.2 设计约束
+## 12. Project Structure Target
 
-- 环境层只负责任务语义与标准化导出。
-- 算法层负责 loss、unroll、buffer、critic 更新。
-- `diffaero_lab.common` 保持极小。
-- `diffaero_lab.uav` 承接多动力学无人机平台复用能力。
-- Newton / Warp 路线按实验后端处理，首版优先完成 PhysX 路线，再接 Warp/Newton 注册项与 adapter。
+Target structure:
 
-## 13. 当前推荐的最终摘要
+```text
+source/diffaero_lab/diffaero_lab/
+├── algo/
+│   ├── algorithms/
+│   ├── configs/
+│   ├── trainers/
+│   └── wrappers/
+├── common/
+│   ├── adapters/
+│   ├── capabilities.py
+│   ├── keys.py
+│   └── terms.py
+├── tasks/
+│   ├── direct/
+│   │   ├── drone_racing/
+│   │   ├── position_control/
+│   │   ├── obstacle_avoidance/
+│   │   └── position_control_multi_agent/
+│   └── manager_based/
+└── uav/
+    ├── adapters/
+    ├── assets/
+    │   ├── drones/
+    │   ├── gates/
+    │   ├── scenes/
+    │   └── sensors/
+    └── dynamics/
+```
 
-这是一个以 IsaacLab own-project 结构为基础、以 `drone_racing` 为首发任务、同时面向 RL baseline 与 Newton differential learning 的四层架构。环境、算法、契约、平台能力各自分层，多动力学模型通过 bridge 切换，训练入口通过 Hydra 组合，首版优先建立 `quad + APG + RL baseline` 的最小闭环，再向 `APG_stochastic / SHAC / SHA2C` 与 `pmd / pmc / simple` 扩展。
+The default project path now exposes `diffaero_lab.tasks`, `diffaero_lab.algo`, `diffaero_lab.common`, and `diffaero_lab.uav` as the supported runtime surface.
+
+## 13. Implementation Rules
+
+1. Keep the single extension package layout.
+2. Add new task scenes under `diffaero_lab.tasks.direct`.
+3. Put reusable UAV platform pieces under `diffaero_lab.uav`.
+4. Put training algorithms under `diffaero_lab.algo`.
+5. Put task-algorithm contracts under `diffaero_lab.common`.
+6. Register every runnable task with a stable Gymnasium ID in the task package `__init__.py`.
+7. Keep RL reward and differential loss as separate terms.
+8. Treat `tensor_backend` as memory/backend metadata.
+9. Treat `supports_differential_rollout` as the direct-gradient capability flag.
+10. Keep quaternion convention explicit in every state contract.
+11. Preserve source attribution for assets and reference code imported from `refer/`.
+12. Add focused tests before expanding a backend, asset family, or task family.
+
+## 14. Acceptance Criteria
+
+The migration is aligned when the following are true:
+
+1. `Isaac-Drone-Racing-Direct-v0` runs with PhysX and exports the standard observation/extras contract.
+2. `Isaac-Drone-Racing-Direct-Warp-v0` runs with Newton/MJWarp and advertises its gradient capability accurately.
+3. `quad`, `pmd`, `pmc`, and `simple` dynamics routes expose the common state contract.
+4. APG stochastic produces gradients through score-function mode on non-direct-differentiable routes.
+5. A Newton differentiability fixture proves `wp.Tape()` gradients before direct APG is enabled on racing.
+6. Drone/gate/track assets live under `diffaero_lab.uav.assets` with metadata and source attribution.
+7. Future task migrations reuse the same task layout and shared UAV platform layer.
+
+## 15. Immediate Next Work
+
+1. Add explicit capability export in `DroneRacingEnv.extras`, including `supports_differential_rollout`.
+2. Change APG stochastic trainer routing to use capability metadata; keep `tensor_backend == "warp"` as backend shape metadata.
+3. Add tests for the current Warp route proving score-function gradients are nonzero and direct APG is gated off.
+4. Normalize or document quaternion convention at the bridge boundary.
+5. Move the 5-inch drone asset into `diffaero_lab.uav.assets.drones` with metadata.
+6. Add a minimal Newton `wp.Tape()` differentiability fixture independent of Isaac Lab racing.

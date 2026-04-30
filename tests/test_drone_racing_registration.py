@@ -8,13 +8,13 @@ import torch
 
 
 def test_drone_racing_env_is_registered():
-    import diffaero_env.tasks  # noqa: F401
+    import diffaero_lab.tasks  # noqa: F401
 
     assert "Isaac-Drone-Racing-Direct-v0" in gym.registry
 
 
 def test_drone_racing_env_spec_entry_point():
-    import diffaero_env.tasks  # noqa: F401
+    import diffaero_lab.tasks  # noqa: F401
 
     spec = gym.registry["Isaac-Drone-Racing-Direct-v0"]
     assert "DroneRacingEnv" in spec.entry_point
@@ -23,22 +23,24 @@ def test_drone_racing_env_spec_entry_point():
 
 
 def test_drone_racing_env_cfg_has_correct_spaces():
-    from diffaero_env.tasks.direct.drone_racing.drone_racing_env_cfg import DroneRacingEnvCfg
+    from diffaero_lab.tasks.direct.drone_racing.drone_racing_env_cfg import DroneRacingEnvCfg
 
     cfg = DroneRacingEnvCfg()
     assert cfg.action_space == 4
-    assert cfg.observation_space == 17
+    assert cfg.observation_space == 13
     assert cfg.state_space == 13
 
 
 def test_drone_racing_env_creates_correct_extras_keys():
-    from diffaero_env.tasks.direct.drone_racing.drone_racing_env import DroneRacingEnv
-    from diffaero_env.tasks.direct.drone_racing.drone_racing_env_cfg import DroneRacingEnvCfg
-    from diffaero_common.keys import EXTRA_SIM_STATE, EXTRA_TASK_TERMS, OBS_CRITIC, OBS_POLICY
+    from diffaero_lab.tasks.direct.drone_racing.drone_racing_env_cfg import DroneRacingEnvCfg
+    from diffaero_lab.common.keys import EXTRA_CAPABILITIES, EXTRA_SIM_STATE, EXTRA_TASK_TERMS
 
     cfg = DroneRacingEnvCfg()
     cfg.scene.num_envs = 4
 
+    assert EXTRA_CAPABILITIES == "capabilities"
+    assert EXTRA_SIM_STATE == "sim_state"
+    assert EXTRA_TASK_TERMS == "task_terms"
     assert hasattr(cfg, "rew_scale_progress")
     assert hasattr(cfg, "rew_scale_tracking")
     assert hasattr(cfg, "rew_scale_control_effort")
@@ -48,9 +50,10 @@ def test_drone_racing_env_creates_correct_extras_keys():
 def test_drone_racing_bridge_exports_required_keys():
     import warp as wp
 
-    from diffaero_env.tasks.direct.drone_racing.dynamics_bridge.quad import QuadDynamicsBridge
-    from diffaero_env.tasks.direct.drone_racing.drone_racing_env_cfg import DroneRacingEnvCfg
+    from diffaero_lab.tasks.direct.drone_racing.dynamics_bridge.quad import QuadDynamicsBridge
+    from diffaero_lab.tasks.direct.drone_racing.drone_racing_env_cfg import DroneRacingEnvCfg
 
+    wp.init()
     cfg = DroneRacingEnvCfg()
     cfg.scene.num_envs = 4
 
@@ -67,9 +70,6 @@ def test_drone_racing_bridge_exports_required_keys():
                 },
             )()
 
-        def set_body_external_force_torque(self, *args, **kwargs):
-            pass
-
     bridge = QuadDynamicsBridge(cfg=cfg, robot=FakeRobot(), num_envs=4, device="cpu")
     base_state = bridge.read_base_state()
     assert "position_w" in base_state
@@ -82,4 +82,4 @@ def test_drone_racing_bridge_exports_required_keys():
 
     dyn_info = bridge.read_dynamics_info()
     assert dyn_info["model_name"] == "quad"
-    assert dyn_info["tensor_backend"] == "torch"
+    assert dyn_info["tensor_backend"] == "physx"

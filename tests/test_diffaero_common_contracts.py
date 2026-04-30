@@ -3,14 +3,14 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
-"""Tests for diffaero_common contract constants, capability flags, and adapters."""
+"""Tests for diffaero_lab.common contract constants, capability flags, and adapters."""
 
 import torch
 
 
 def test_contract_keys_match_design():
     """Verify all observation and extras keys match the approved design."""
-    from diffaero_common.keys import (
+    from diffaero_lab.common.keys import (
         OBS_POLICY,
         OBS_CRITIC,
         EXTRA_TASK_TERMS,
@@ -33,7 +33,7 @@ def test_contract_keys_match_design():
 
 def test_capability_flags_match_design():
     """Verify all capability flags match the approved design."""
-    from diffaero_common.capabilities import (
+    from diffaero_lab.common.capabilities import (
         SUPPORTS_CRITIC_STATE,
         SUPPORTS_SIM_STATE,
         SUPPORTS_TASK_TERMS,
@@ -54,7 +54,7 @@ def test_capability_flags_match_design():
 
 def test_task_term_names_match_design():
     """Verify standard task term names are defined."""
-    from diffaero_common.terms import (
+    from diffaero_lab.common.terms import (
         TERM_PROGRESS,
         TERM_TRACKING_ERROR,
         TERM_GATE_PASS,
@@ -79,7 +79,7 @@ def test_task_term_names_match_design():
 
 def test_flatten_round_trip_for_quad_state():
     """Verify flatten/unflatten round-trip preserves motor_omega shape for quad model."""
-    from diffaero_common.adapters.flatten import flatten_sim_state, unflatten_sim_state
+    from diffaero_lab.common.adapters.flatten import flatten_sim_state, unflatten_sim_state
 
     sim_state = {
         "position_w": torch.zeros(2, 3),
@@ -95,7 +95,7 @@ def test_flatten_round_trip_for_quad_state():
 
 def test_flatten_preserves_all_quad_fields():
     """Verify flatten/unflatten round-trip preserves all quad fields."""
-    from diffaero_common.adapters.flatten import flatten_sim_state, unflatten_sim_state
+    from diffaero_lab.common.adapters.flatten import flatten_sim_state, unflatten_sim_state
 
     position_w = torch.randn(2, 3)
     quaternion_w = torch.tensor([[0.0, 0.0, 0.0, 1.0]]).repeat(2, 1)
@@ -127,7 +127,7 @@ def test_flatten_preserves_all_quad_fields():
 
 def test_sim_state_builder_returns_required_fields():
     """Verify sim_state builder returns all required common fields plus quad-specific fields."""
-    from diffaero_common.adapters.sim_state import build_sim_state
+    from diffaero_lab.common.adapters.sim_state import build_sim_state
 
     batch_size = 4
     state = build_sim_state(batch_size=batch_size, model_name="quad")
@@ -150,7 +150,7 @@ def test_sim_state_builder_returns_required_fields():
     assert state["dynamics"]["model_name"] == "quad"
     assert "state_layout_version" in state["dynamics"]
     assert "quat_convention" in state["dynamics"]
-    assert state["dynamics"]["quat_convention"] == "wxyz"
+    assert state["dynamics"]["quat_convention"] == "xyzw"
 
     # Shapes
     assert state["position_w"].shape == (batch_size, 3)

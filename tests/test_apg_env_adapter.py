@@ -20,8 +20,8 @@ import torch
 import isaaclab.sim as sim_utils
 from isaaclab.app.settings_manager import get_settings_manager
 
-import diffaero_env.tasks  # noqa: F401
-from diffaero_algo.wrappers.env_adapter import DifferentialEnvAdapter
+import diffaero_lab.tasks  # noqa: F401
+from tests.isaac_test_utils import make_cpu_test_adapter
 
 get_settings_manager().set_bool("/physics/cooking/ujitsoCollisionCooking", False)
 
@@ -29,14 +29,7 @@ get_settings_manager().set_bool("/physics/cooking/ujitsoCollisionCooking", False
 @pytest.fixture(scope="module")
 def shared_env():
     """Shared adapter for all tests in this module."""
-    from diffaero_env.tasks.direct.drone_racing.drone_racing_env_cfg import DroneRacingEnvCfg
-
-    sim_utils.create_new_stage()
-    get_settings_manager().set_bool("/isaaclab/render/rtx_sensors", False)
-    cfg = DroneRacingEnvCfg()
-    cfg.scene = cfg.scene.replace(num_envs=8, replicate_physics=False)
-    cfg.sim.device = "cpu"
-    adapter = DifferentialEnvAdapter.make("Isaac-Drone-Racing-Direct-v0", cfg=cfg)
+    adapter = make_cpu_test_adapter()
     yield adapter
     adapter.close()
 
@@ -77,8 +70,8 @@ def test_apg_adapter_contract_keys(shared_env):
 
 def test_apgtrainer_initialization(shared_env):
     """Test that APGTrainer can be initialized."""
-    from diffaero_algo.algorithms.apg import APGConfig
-    from diffaero_algo.trainers.apg_trainer import APGTrainer
+    from diffaero_lab.algo.algorithms.apg import APGConfig
+    from diffaero_lab.algo.trainers.apg_trainer import APGTrainer
 
     cfg = APGConfig(
         lr=3e-4,
@@ -93,7 +86,7 @@ def test_apgtrainer_initialization(shared_env):
 
 def test_apg_actor_forward(shared_env):
     """Test that APG actor can forward pass."""
-    from diffaero_algo.algorithms.apg import APG, APGConfig
+    from diffaero_lab.algo.algorithms.apg import APG, APGConfig
 
     batch = shared_env.reset()
 
@@ -114,7 +107,7 @@ def test_apg_actor_forward(shared_env):
 
 def test_apg_rollout_and_backward(shared_env):
     """Test APG rollout and backward pass."""
-    from diffaero_algo.algorithms.apg import APG, APGConfig
+    from diffaero_lab.algo.algorithms.apg import APG, APGConfig
 
     batch = shared_env.reset()
 

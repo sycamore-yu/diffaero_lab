@@ -17,7 +17,7 @@ class TestSharedActorCriticImports:
 
     def test_actor_critic_imports(self):
         """Test that actor_critic module can be imported."""
-        from diffaero_algo.algorithms.actor_critic import (
+        from diffaero_lab.algo.algorithms.actor_critic import (
             OBS_CRITIC,
             OBS_POLICY,
             GaussianActorHead,
@@ -39,7 +39,7 @@ class TestSharedActorCriticConfig:
 
     def test_default_config(self):
         """Test that default config has expected values."""
-        from diffaero_algo.algorithms.actor_critic import SharedActorCriticConfig
+        from diffaero_lab.algo.algorithms.actor_critic import SharedActorCriticConfig
 
         cfg = SharedActorCriticConfig()
         assert cfg.actor_hidden_dims == (256, 128, 64)
@@ -48,7 +48,7 @@ class TestSharedActorCriticConfig:
 
     def test_custom_config(self):
         """Test that custom config values are preserved."""
-        from diffaero_algo.algorithms.actor_critic import SharedActorCriticConfig
+        from diffaero_lab.algo.algorithms.actor_critic import SharedActorCriticConfig
 
         cfg = SharedActorCriticConfig(
             actor_hidden_dims=(512, 256),
@@ -65,7 +65,7 @@ class TestGaussianActorHead:
 
     def test_actor_forward_shape(self):
         """Test that actor forward pass returns correct shapes."""
-        from diffaero_algo.algorithms.actor_critic import GaussianActorHead
+        from diffaero_lab.algo.algorithms.actor_critic import GaussianActorHead
 
         batch_size = 8
         obs_dim = 64
@@ -81,7 +81,7 @@ class TestGaussianActorHead:
 
     def test_actor_sample(self):
         """Test that actor can sample actions."""
-        from diffaero_algo.algorithms.actor_critic import GaussianActorHead
+        from diffaero_lab.algo.algorithms.actor_critic import GaussianActorHead
 
         batch_size = 8
         obs_dim = 64
@@ -102,7 +102,7 @@ class TestValueCriticHead:
 
     def test_critic_forward_shape(self):
         """Test that critic forward pass returns correct shapes."""
-        from diffaero_algo.algorithms.actor_critic import ValueCriticHead
+        from diffaero_lab.algo.algorithms.actor_critic import ValueCriticHead
 
         batch_size = 8
         obs_dim = 128
@@ -116,7 +116,7 @@ class TestValueCriticHead:
 
     def test_critic_q_value_shape(self):
         """Test that critic Q-value computation with actions returns correct shapes."""
-        from diffaero_algo.algorithms.actor_critic import ValueCriticHead
+        from diffaero_lab.algo.algorithms.actor_critic import ValueCriticHead
 
         batch_size = 8
         obs_dim = 128
@@ -136,7 +136,7 @@ class TestSharedActorCritic:
 
     def test_actor_critic_initialization(self):
         """Test that SharedActorCritic can be initialized with separate dims."""
-        from diffaero_algo.algorithms.actor_critic import SharedActorCritic, SharedActorCriticConfig
+        from diffaero_lab.algo.algorithms.actor_critic import SharedActorCritic, SharedActorCriticConfig
 
         policy_obs_dim = 64
         critic_obs_dim = 128
@@ -157,7 +157,7 @@ class TestSharedActorCritic:
 
     def test_actor_critic_separate_observation_paths(self):
         """Test that actor and critic use separate observation inputs."""
-        from diffaero_algo.algorithms.actor_critic import SharedActorCritic, SharedActorCriticConfig
+        from diffaero_lab.algo.algorithms.actor_critic import SharedActorCritic, SharedActorCriticConfig
 
         policy_obs_dim = 64
         critic_obs_dim = 128
@@ -186,7 +186,7 @@ class TestSharedActorCritic:
 
     def test_actor_critic_q_value_with_action(self):
         """Test that critic can compute Q-value given observations and actions."""
-        from diffaero_algo.algorithms.actor_critic import SharedActorCritic, SharedActorCriticConfig
+        from diffaero_lab.algo.algorithms.actor_critic import SharedActorCritic, SharedActorCriticConfig
 
         policy_obs_dim = 64
         critic_obs_dim = 128
@@ -210,7 +210,7 @@ class TestSharedActorCritic:
 
     def test_actor_critic_entropy(self):
         """Test that actor_critic produces entropy for exploration."""
-        from diffaero_algo.algorithms.actor_critic import SharedActorCritic, SharedActorCriticConfig
+        from diffaero_lab.algo.algorithms.actor_critic import SharedActorCritic, SharedActorCriticConfig
 
         policy_obs_dim = 64
         critic_obs_dim = 128
@@ -232,7 +232,7 @@ class TestSharedActorCritic:
 
     def test_actor_critic_to_device(self):
         """Test that actor_critic can be moved to device."""
-        from diffaero_algo.algorithms.actor_critic import SharedActorCritic, SharedActorCriticConfig
+        from diffaero_lab.algo.algorithms.actor_critic import SharedActorCritic, SharedActorCriticConfig
 
         cfg = SharedActorCriticConfig()
         ac = SharedActorCritic(
@@ -248,7 +248,7 @@ class TestSharedActorCritic:
 
     def test_actor_critic_train_eval_mode(self):
         """Test that actor_critic can switch between train and eval modes."""
-        from diffaero_algo.algorithms.actor_critic import SharedActorCritic, SharedActorCriticConfig
+        from diffaero_lab.algo.algorithms.actor_critic import SharedActorCritic, SharedActorCriticConfig
 
         cfg = SharedActorCriticConfig()
         ac = SharedActorCritic(

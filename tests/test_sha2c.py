@@ -20,8 +20,8 @@ import numpy as np
 import isaaclab.sim as sim_utils
 from isaaclab.app.settings_manager import get_settings_manager
 
-import diffaero_env.tasks  # noqa: F401
-from diffaero_algo.wrappers.env_adapter import DifferentialEnvAdapter
+import diffaero_lab.tasks  # noqa: F401
+from tests.isaac_test_utils import make_cpu_test_adapter
 
 get_settings_manager().set_bool("/physics/cooking/ujitsoCollisionCooking", False)
 
@@ -29,14 +29,7 @@ get_settings_manager().set_bool("/physics/cooking/ujitsoCollisionCooking", False
 @pytest.fixture(scope="module")
 def shared_env():
     """Shared adapter for all tests in this module."""
-    from diffaero_env.tasks.direct.drone_racing.drone_racing_env_cfg import DroneRacingEnvCfg
-
-    sim_utils.create_new_stage()
-    get_settings_manager().set_bool("/isaaclab/render/rtx_sensors", False)
-    cfg = DroneRacingEnvCfg()
-    cfg.scene = cfg.scene.replace(num_envs=8, replicate_physics=False)
-    cfg.sim.device = "cpu"
-    adapter = DifferentialEnvAdapter.make("Isaac-Drone-Racing-Direct-v0", cfg=cfg)
+    adapter = make_cpu_test_adapter()
     yield adapter
     adapter.close()
 
@@ -52,8 +45,8 @@ class TestSHA2CAsymmetricActorCritic:
 
     def test_sha2c_imports(self):
         """Test that SHA2C module can be imported."""
-        from diffaero_algo.algorithms.sha2c import SHA2C, SHA2CConfig
-        from diffaero_algo.algorithms.sha2c import AsymmetricActor, AsymmetricCritic
+        from diffaero_lab.algo.algorithms.sha2c import SHA2C, SHA2CConfig
+        from diffaero_lab.algo.algorithms.sha2c import AsymmetricActor, AsymmetricCritic
 
         assert SHA2C is not None
         assert SHA2CConfig is not None
@@ -62,7 +55,7 @@ class TestSHA2CAsymmetricActorCritic:
 
     def test_sha2c_config(self):
         """Test that SHA2CConfig can be instantiated with asymmetric parameters."""
-        from diffaero_algo.algorithms.sha2c import SHA2CConfig
+        from diffaero_lab.algo.algorithms.sha2c import SHA2CConfig
 
         cfg = SHA2CConfig(
             actor_lr=3e-4,
@@ -88,7 +81,7 @@ class TestSHA2CAsymmetricActorCritic:
         - AsymmetricCritic that takes different input (critic observations)
         - Separate optimizers for actor and critic
         """
-        from diffaero_algo.algorithms.sha2c import SHA2C, SHA2CConfig
+        from diffaero_lab.algo.algorithms.sha2c import SHA2C, SHA2CConfig
 
         batch = shared_env.reset()
 
@@ -123,7 +116,7 @@ class TestSHA2CAsymmetricActorCritic:
 
         Actor should use policy observations while critic uses critic observations.
         """
-        from diffaero_algo.algorithms.sha2c import SHA2C, SHA2CConfig
+        from diffaero_lab.algo.algorithms.sha2c import SHA2C, SHA2CConfig
 
         batch = shared_env.reset()
 
@@ -159,7 +152,7 @@ class TestSHA2CAsymmetricActorCritic:
 
         Soft update: target = tau * current + (1 - tau) * target
         """
-        from diffaero_algo.algorithms.sha2c import SHA2C, SHA2CConfig
+        from diffaero_lab.algo.algorithms.sha2c import SHA2C, SHA2CConfig
 
         batch = shared_env.reset()
 
@@ -216,8 +209,8 @@ class TestSHA2CAsymmetricActorCritic:
 
     def test_sha2c_trainer_initialization(self, shared_env):
         """Test that SHA2CTrainer can be initialized."""
-        from diffaero_algo.algorithms.sha2c import SHA2CConfig
-        from diffaero_algo.trainers.sha2c_trainer import SHA2CTrainer
+        from diffaero_lab.algo.algorithms.sha2c import SHA2CConfig
+        from diffaero_lab.algo.trainers.sha2c_trainer import SHA2CTrainer
 
         cfg = SHA2CConfig(
             actor_lr=3e-4,
@@ -235,7 +228,7 @@ class TestSHA2CAsymmetricActorCritic:
 
         SHA2C should adapt entropy coefficient to achieve target_entropy.
         """
-        from diffaero_algo.algorithms.sha2c import SHA2C, SHA2CConfig
+        from diffaero_lab.algo.algorithms.sha2c import SHA2C, SHA2CConfig
 
         batch = shared_env.reset()
 

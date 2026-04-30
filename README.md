@@ -1,16 +1,14 @@
-# Template for Isaac Lab Projects
+# DiffAero Lab
 
 ## Overview
 
-This project/repository serves as a template for building projects or extensions based on Isaac Lab.
-It allows you to develop in an isolated environment, outside of the core Isaac Lab repository.
+DiffAero Lab is an Isaac Lab extension for UAV simulation research.
+It migrates DiffAero task scenes into the Isaac Lab ecosystem, keeps reinforcement-learning and differential-learning paths side by side, and adds a Newton/Warp experimental route for differentiable physics work.
 
-**Key Features:**
+Current production task scenes:
 
-- `Isolation` Work outside the core Isaac Lab repository, ensuring that your development efforts remain self-contained.
-- `Flexibility` This template is set up to allow your code to be run as an extension in Omniverse.
-
-**Keywords:** extension, template, isaaclab
+- `Isaac-Drone-Racing-Direct-v0`
+- `Isaac-Drone-Racing-Direct-Warp-v0`
 
 ## Installation
 
@@ -28,9 +26,6 @@ It allows you to develop in an isolated environment, outside of the core Isaac L
 - Verify that the extension is correctly installed by:
 
     - Listing the available tasks:
-
-        Note: It the task name changes, it may be necessary to update the search pattern `"Template-"`
-        (in the `scripts/list_envs.py` file) so that it can be listed.
 
         ```bash
         # use 'FULL_PATH_TO_isaaclab.sh|bat -p' instead of 'python' if Isaac Lab is not installed in Python venv or conda
@@ -71,23 +66,6 @@ To setup the IDE, please follow these instructions:
 If everything executes correctly, it should create a file .python.env in the `.vscode` directory.
 The file contains the python paths to all the extensions provided by Isaac Sim and Omniverse.
 This helps in indexing all the python modules for intelligent suggestions while writing code.
-
-### Setup as Omniverse Extension (Optional)
-
-We provide an example UI extension that will load upon enabling your extension defined in `source/diffaero_lab/diffaero_lab/ui_extension_example.py`.
-
-To enable your extension, follow these steps:
-
-1. **Add the search path of this project/repository** to the extension manager:
-    - Navigate to the extension manager using `Window` -> `Extensions`.
-    - Click on the **Hamburger Icon**, then go to `Settings`.
-    - In the `Extension Search Paths`, enter the absolute path to the `source` directory of this project/repository.
-    - If not already present, in the `Extension Search Paths`, enter the path that leads to Isaac Lab's extension directory directory (`IsaacLab/source`)
-    - Click on the **Hamburger Icon**, then click `Refresh`.
-
-2. **Search and enable your extension**:
-    - Find your extension under the `Third Party` category.
-    - Toggle it to enable your extension.
 
 ## Code formatting
 

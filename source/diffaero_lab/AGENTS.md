@@ -5,6 +5,7 @@
 ## OVERVIEW
 
 Omniverse extension package. Double-nested structure: `source/diffaero_lab/diffaero_lab/`. Installed as `diffaero_lab` via `pip install -e source/diffaero_lab`.
+Current registered Task Scene modules are explicit and production-only.
 
 ## STRUCTURE
 
@@ -14,34 +15,31 @@ source/diffaero_lab/
 ├── setup.py                  # Package entry point
 ├── docs/CHANGELOG.rst       # Per-extension changelog
 └── diffaero_lab/            # Main package (NESTED)
-    ├── __init__.py           # Gym env + UI extension registration
-    ├── ui_extension_example.py
+    ├── __init__.py           # Task registration
+    ├── algo/
+    ├── common/
     └── tasks/
         ├── __init__.py
-        ├── direct/           # Direct RL variant
-        │   ├── diffaero_lab/           # Single-agent
-        │   └── diffaero_lab_marl/     # Multi-agent (MARL)
-        └── manager_based/   # Manager-based variant
-            └── diffaero_lab/
+        └── direct/
+            └── drone_racing/
 ```
 
 ## WHERE TO LOOK
 
 | Task | Location |
 |------|----------|
-| Add task (single-agent) | `tasks/direct/diffaero_lab/` |
-| Add task (multi-agent) | `tasks/direct/diffaero_lab_marl/` |
-| Add manager-based task | `tasks/manager_based/diffaero_lab/` |
+| Add direct Task Scene | `tasks/direct/<task_name>/` |
+| Route and capability contract | `common/sim_contract.py`, `common/rollout_route.py` |
+| UAV Platform assets and route registry | `uav/assets/`, `uav/route_registry.py` |
 | Gym registration | `diffaero_lab/__init__.py` |
-| UI extension | `ui_extension_example.py` |
-| MDP rewards (manager-based) | `tasks/manager_based/diffaero_lab/mdp/rewards.py` |
+| Differential Algorithm wrappers and trainers | `algo/wrappers/`, `algo/trainers/` |
 
 ## CONVENTIONS
 
 - Follow Isaac Lab task structure: `*_env.py` + `*_env_cfg.py` pairs
 - RL configs in `agents/` subdir (skrl yaml files)
-- Manager-based MDP rewards go in `mdp/rewards.py`
-- Task names must match search pattern in `scripts/list_envs.py` (`Template-*`)
+- Runtime route selection goes through `uav/route_registry.py`
+- Shared simulator metadata and rollout capability live in `common/`
 
 ## ANTI-PATTERNS
 

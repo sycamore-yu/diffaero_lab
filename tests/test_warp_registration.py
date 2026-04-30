@@ -18,7 +18,7 @@ def test_warp_task_id_is_registered():
     This test FAILS because the Warp/Newton task registration is not yet implemented.
     Expected failure reason: KeyError - task ID not found in gym.registry
     """
-    import diffaero_env.tasks  # noqa: F401
+    import diffaero_lab.tasks  # noqa: F401
 
     assert "Isaac-Drone-Racing-Direct-Warp-v0" in gym.registry, (
         "Isaac-Drone-Racing-Direct-Warp-v0 is not registered. "
@@ -32,7 +32,7 @@ def test_warp_task_spec_entry_point():
     This test FAILS because the Warp task registration does not exist.
     Expected failure reason: gym.error.UnregisteredEnv - task ID not registered
     """
-    import diffaero_env.tasks  # noqa: F401
+    import diffaero_lab.tasks  # noqa: F401
 
     spec = gym.spec("Isaac-Drone-Racing-Direct-Warp-v0")
     assert "DroneRacingEnv" in spec.entry_point, "Warp task entry point should resolve to DroneRacingEnv"
@@ -45,12 +45,12 @@ def test_warp_task_cfg_entry_point_refers_to_warp_config():
     This test FAILS because the Warp task registration does not exist.
     Expected failure reason: gym.error.UnregisteredEnv - task ID not registered
     """
-    import diffaero_env.tasks  # noqa: F401
+    import diffaero_lab.tasks  # noqa: F401
 
     spec = gym.spec("Isaac-Drone-Racing-Direct-Warp-v0")
     env_cfg_entry_point = spec.kwargs["env_cfg_entry_point"]
     # The Warp config should be distinguishable from the PhysX config
-    # Current PhysX config: diffaero_env.tasks.direct.drone_racing.drone_racing_env_cfg:DroneRacingEnvCfg
+    # Current PhysX config: diffaero_lab.tasks.direct.drone_racing.drone_racing_env_cfg:DroneRacingEnvCfg
     # Expected Warp config: should reference Warp or Newton in the path
     assert "warp" in env_cfg_entry_point.lower() or "newton" in env_cfg_entry_point.lower(), (
         f"Warp task env_cfg_entry_point should reference Warp/Newton config, got: {env_cfg_entry_point}"
@@ -63,7 +63,7 @@ def test_warp_task_has_skrl_cfg():
     This test FAILS because the Warp task registration does not exist.
     Expected failure reason: gym.error.UnregisteredEnv - task ID not registered
     """
-    import diffaero_env.tasks  # noqa: F401
+    import diffaero_lab.tasks  # noqa: F401
 
     spec = gym.spec("Isaac-Drone-Racing-Direct-Warp-v0")
     assert "skrl_cfg_entry_point" in spec.kwargs, "Warp task should have skrl_cfg_entry_point kwarg for RL training"

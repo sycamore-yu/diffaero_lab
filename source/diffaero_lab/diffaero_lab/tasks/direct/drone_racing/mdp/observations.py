@@ -13,7 +13,6 @@ from diffaero_lab.tasks.direct.drone_racing.state.policy import build_policy_obs
 
 def compute_observations(
     bridge_state: dict[str, Tensor],
-    last_action: Tensor,
     enable_critic: bool,
     target_position_w: Tensor,
     target_yaw: Tensor,
@@ -26,7 +25,6 @@ def compute_observations(
         quaternion_w=base["quaternion_w"],
         linear_velocity_w=base["linear_velocity_w"],
         angular_velocity_b=base["angular_velocity_b"],
-        last_action=last_action,
         target_position_w=target_position_w,
         target_yaw=target_yaw,
         next_target_position_w=next_target_position_w,

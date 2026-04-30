@@ -8,6 +8,7 @@
 import torch
 
 from diffaero_lab.algo.algorithms.sha2c import SHA2C, SHA2CConfig
+from diffaero_lab.algo.trainers.common import trainer_loss
 from diffaero_lab.algo.wrappers.env_adapter import DifferentialEnvAdapter
 
 
@@ -80,9 +81,5 @@ class SHA2CTrainer:
                 batch_extras=batch.extras,
             )
 
-            if "progress" in batch.extras.get("task_terms", {}):
-                loss = -batch.extras["task_terms"]["progress"].mean()
-            else:
-                loss = -rewards.mean()
-
+            loss = trainer_loss(rewards, batch.extras)
             self.sha2c.record_loss(loss, policy_info)

@@ -19,7 +19,7 @@ def test_newton_adapter_is_implemented():
     This test FAILS because build_newton_adapter() currently raises NotImplementedError.
     Expected failure reason: NotImplementedError - Warp/Newton adapter not yet implemented
     """
-    from diffaero_uav.adapters.newton import build_newton_adapter
+    from diffaero_lab.uav.adapters.newton import build_newton_adapter
 
     try:
         adapter = build_newton_adapter(cfg=None, device="cpu", backend="warp")
@@ -35,7 +35,7 @@ def test_newton_adapter_exposes_required_interface():
     This test FAILS because build_newton_adapter raises NotImplementedError.
     Expected failure reason: NotImplementedError - Warp/Newton adapter not yet implemented
     """
-    from diffaero_uav.adapters.newton import build_newton_adapter
+    from diffaero_lab.uav.adapters.newton import build_newton_adapter
 
     adapter = build_newton_adapter(cfg=None, device="cpu", backend="warp")
     assert adapter is not None, "build_newton_adapter returned None"
@@ -58,7 +58,7 @@ def test_warp_sim_state_has_tensor_backend_warp():
     This test FAILS because build_sim_state does not accept a backend parameter.
     Expected failure reason: TypeError - build_sim_state() got unexpected keyword argument 'backend'
     """
-    from diffaero_common.adapters.sim_state import build_sim_state
+    from diffaero_lab.common.adapters.sim_state import build_sim_state
 
     state = build_sim_state(batch_size=4, model_name="quad", backend="warp")
 
@@ -73,7 +73,7 @@ def test_warp_sim_state_has_write_mode_field():
     This test FAILS because build_sim_state does not accept a backend parameter.
     Expected failure reason: TypeError - build_sim_state() got unexpected keyword argument 'backend'
     """
-    from diffaero_common.adapters.sim_state import build_sim_state
+    from diffaero_lab.common.adapters.sim_state import build_sim_state
 
     state = build_sim_state(batch_size=4, model_name="quad", backend="warp")
 
@@ -89,7 +89,7 @@ def test_warp_sim_state_preserves_quat_convention():
     This test FAILS because build_sim_state does not accept a backend parameter.
     Expected failure reason: TypeError - build_sim_state() got unexpected keyword argument 'backend'
     """
-    from diffaero_common.adapters.sim_state import build_sim_state
+    from diffaero_lab.common.adapters.sim_state import build_sim_state
 
     state = build_sim_state(batch_size=4, model_name="quad", backend="warp")
 
@@ -105,7 +105,7 @@ def test_newton_adapter_read_dynamics_info_returns_warp_metadata():
     This test FAILS because build_newton_adapter raises NotImplementedError.
     Expected failure reason: NotImplementedError - Warp/Newton adapter not yet implemented
     """
-    from diffaero_uav.adapters.newton import build_newton_adapter
+    from diffaero_lab.uav.adapters.newton import build_newton_adapter
 
     adapter = build_newton_adapter(cfg=None, device="cpu", backend="warp")
     assert adapter is not None, "build_newton_adapter returned None"
@@ -126,7 +126,7 @@ def test_warp_dynamics_info_model_name_quad():
     This test FAILS because build_newton_adapter raises NotImplementedError.
     Expected failure reason: NotImplementedError - Warp/Newton adapter not yet implemented
     """
-    from diffaero_uav.adapters.newton import build_newton_adapter
+    from diffaero_lab.uav.adapters.newton import build_newton_adapter
 
     adapter = build_newton_adapter(cfg=None, device="cpu", backend="warp")
     assert adapter is not None, "build_newton_adapter returned None"

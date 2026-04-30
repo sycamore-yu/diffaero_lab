@@ -3,7 +3,6 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
-from diffaero_lab.uav.adapters.isaaclab import build_isaaclab_adapter
 from diffaero_lab.uav.adapters.newton import build_newton_adapter
 
-__all__ = ["build_isaaclab_adapter", "build_newton_adapter"]
+__all__ = ["build_newton_adapter"]

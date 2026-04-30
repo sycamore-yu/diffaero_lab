@@ -18,7 +18,7 @@ COMMON_BASE_STATE_KEYS = {"position_w", "quaternion_w", "linear_velocity_w", "an
 
 def test_pmd_bridge_exports_common_base_state_keys():
     """Verify PMD bridge exports all required common base state keys."""
-    from diffaero_env.tasks.direct.drone_racing.dynamics_bridge.pointmass_discrete import PMDDynamicsBridge
+    from diffaero_lab.tasks.direct.drone_racing.dynamics_bridge.pointmass_discrete import PMDDynamicsBridge
 
     class FakeRobot:
         def __init__(self):
@@ -53,7 +53,7 @@ def test_pmd_bridge_exports_common_base_state_keys():
 
 def test_pmc_bridge_exports_common_base_state_keys():
     """Verify PMC bridge exports all required common base state keys."""
-    from diffaero_env.tasks.direct.drone_racing.dynamics_bridge.pointmass_continuous import PMCDynamicsBridge
+    from diffaero_lab.tasks.direct.drone_racing.dynamics_bridge.pointmass_continuous import PMCDynamicsBridge
 
     class FakeRobot:
         def __init__(self):
@@ -88,7 +88,7 @@ def test_pmc_bridge_exports_common_base_state_keys():
 
 def test_simple_bridge_exports_common_base_state_keys():
     """Verify Simple bridge exports all required common base state keys."""
-    from diffaero_env.tasks.direct.drone_racing.dynamics_bridge.simplified_quad import SimpleDynamicsBridge
+    from diffaero_lab.tasks.direct.drone_racing.dynamics_bridge.simplified_quad import SimpleDynamicsBridge
 
     class FakeRobot:
         def __init__(self):
@@ -123,7 +123,7 @@ def test_simple_bridge_exports_common_base_state_keys():
 
 def test_pmd_bridge_dynamics_info():
     """Verify PMD bridge reports correct model_name in dynamics info."""
-    from diffaero_env.tasks.direct.drone_racing.dynamics_bridge.pointmass_discrete import PMDDynamicsBridge
+    from diffaero_lab.tasks.direct.drone_racing.dynamics_bridge.pointmass_discrete import PMDDynamicsBridge
 
     class FakeRobot:
         def __init__(self):
@@ -149,7 +149,7 @@ def test_pmd_bridge_dynamics_info():
 
 def test_pmc_bridge_dynamics_info():
     """Verify PMC bridge reports correct model_name in dynamics info."""
-    from diffaero_env.tasks.direct.drone_racing.dynamics_bridge.pointmass_continuous import PMCDynamicsBridge
+    from diffaero_lab.tasks.direct.drone_racing.dynamics_bridge.pointmass_continuous import PMCDynamicsBridge
 
     class FakeRobot:
         def __init__(self):
@@ -175,7 +175,7 @@ def test_pmc_bridge_dynamics_info():
 
 def test_simple_bridge_dynamics_info():
     """Verify Simple bridge reports correct model_name in dynamics info."""
-    from diffaero_env.tasks.direct.drone_racing.dynamics_bridge.simplified_quad import SimpleDynamicsBridge
+    from diffaero_lab.tasks.direct.drone_racing.dynamics_bridge.simplified_quad import SimpleDynamicsBridge
 
     class FakeRobot:
         def __init__(self):
@@ -201,7 +201,7 @@ def test_simple_bridge_dynamics_info():
 
 def test_build_sim_state_pmd_succeeds():
     """Verify build_sim_state supports 'pmd' model_name."""
-    from diffaero_common.adapters.sim_state import build_sim_state
+    from diffaero_lab.common.adapters.sim_state import build_sim_state
 
     state = build_sim_state(batch_size=4, model_name="pmd")
     assert state is not None
@@ -212,7 +212,7 @@ def test_build_sim_state_pmd_succeeds():
 
 def test_build_sim_state_pmc_succeeds():
     """Verify build_sim_state supports 'pmc' model_name."""
-    from diffaero_common.adapters.sim_state import build_sim_state
+    from diffaero_lab.common.adapters.sim_state import build_sim_state
 
     state = build_sim_state(batch_size=4, model_name="pmc")
     assert state is not None
@@ -223,7 +223,7 @@ def test_build_sim_state_pmc_succeeds():
 
 def test_build_sim_state_simple_succeeds():
     """Verify build_sim_state supports 'simple' model_name."""
-    from diffaero_common.adapters.sim_state import build_sim_state
+    from diffaero_lab.common.adapters.sim_state import build_sim_state
 
     state = build_sim_state(batch_size=4, model_name="simple")
     assert state is not None
@@ -234,7 +234,7 @@ def test_build_sim_state_simple_succeeds():
 
 def test_flatten_unflatten_round_trip_pmd():
     """Verify flatten/unflatten round-trip works for pmd state."""
-    from diffaero_common.adapters.flatten import flatten_sim_state, unflatten_sim_state
+    from diffaero_lab.common.adapters.flatten import flatten_sim_state, unflatten_sim_state
 
     sim_state = {
         "position_w": torch.randn(2, 3),
@@ -252,7 +252,7 @@ def test_flatten_unflatten_round_trip_pmd():
 
 def test_flatten_unflatten_round_trip_pmc():
     """Verify flatten/unflatten round-trip works for pmc state."""
-    from diffaero_common.adapters.flatten import flatten_sim_state, unflatten_sim_state
+    from diffaero_lab.common.adapters.flatten import flatten_sim_state, unflatten_sim_state
 
     sim_state = {
         "position_w": torch.randn(2, 3),
@@ -270,7 +270,7 @@ def test_flatten_unflatten_round_trip_pmc():
 
 def test_flatten_unflatten_round_trip_simple():
     """Verify flatten/unflatten round-trip works for simple state."""
-    from diffaero_common.adapters.flatten import flatten_sim_state, unflatten_sim_state
+    from diffaero_lab.common.adapters.flatten import flatten_sim_state, unflatten_sim_state
 
     sim_state = {
         "position_w": torch.randn(2, 3),
@@ -288,7 +288,7 @@ def test_flatten_unflatten_round_trip_simple():
 
 def test_pmd_sim_state_common_fields():
     """Verify pmd sim_state has all common fields required by the contract."""
-    from diffaero_common.adapters.sim_state import build_sim_state
+    from diffaero_lab.common.adapters.sim_state import build_sim_state
 
     state = build_sim_state(batch_size=4, model_name="pmd")
 
@@ -302,7 +302,7 @@ def test_pmd_sim_state_common_fields():
 
 def test_pmc_sim_state_common_fields():
     """Verify pmc sim_state has all common fields required by the contract."""
-    from diffaero_common.adapters.sim_state import build_sim_state
+    from diffaero_lab.common.adapters.sim_state import build_sim_state
 
     state = build_sim_state(batch_size=4, model_name="pmc")
 
@@ -316,7 +316,7 @@ def test_pmc_sim_state_common_fields():
 
 def test_simple_sim_state_common_fields():
     """Verify simple sim_state has all common fields required by the contract."""
-    from diffaero_common.adapters.sim_state import build_sim_state
+    from diffaero_lab.common.adapters.sim_state import build_sim_state
 
     state = build_sim_state(batch_size=4, model_name="simple")
 

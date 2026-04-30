@@ -1,483 +1,68 @@
 {
-    // Use IntelliSense to learn about possible attributes.
-    // Hover to view descriptions of existing attributes.
-    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
-        // For standalone script execution
         {
             "name": "Python: Current File",
             "type": "debugpy",
             "request": "launch",
             "program": "${file}",
-            "console": "integratedTerminal",
+            "console": "integratedTerminal"
         },
         {
-            "name": "Python: Train Template-Diffaero-Lab-Direct-v0 with skrl (AMP)",
+            "name": "Python: Train Isaac-Drone-Racing-Direct-v0 with skrl PPO",
             "type": "debugpy",
             "request": "launch",
-            "args" : ["--task", "Template-Diffaero-Lab-Direct-v0", "--num_envs", "4096", "--headless", "--algorithm", "AMP"],
-            "program": "${workspaceFolder}/scripts/skrl/train.py",
-            "console": "integratedTerminal",
+            "program": "${workspaceFolder}/scripts/reinforcement_learning/skrl/train.py",
+            "args": ["--task", "Isaac-Drone-Racing-Direct-v0", "--num_envs", "4096", "--headless", "--algorithm", "PPO"],
+            "console": "integratedTerminal"
         },
         {
-            "name": "Python: Play Template-Diffaero-Lab-Direct-v0 with skrl (AMP)",
+            "name": "Python: Play Isaac-Drone-Racing-Direct-v0 with skrl PPO",
             "type": "debugpy",
             "request": "launch",
-            "args" : ["--task", "Template-Diffaero-Lab-Direct-v0", "--num_envs", "32", "--algorithm", "AMP"],
-            "program": "${workspaceFolder}/scripts/skrl/play.py",
-            "console": "integratedTerminal",
+            "program": "${workspaceFolder}/scripts/reinforcement_learning/skrl/play.py",
+            "args": ["--task", "Isaac-Drone-Racing-Direct-v0", "--num_envs", "32", "--algorithm", "PPO"],
+            "console": "integratedTerminal"
         },
         {
-            "name": "Python: Train Template-Diffaero-Lab-Direct-v0 with skrl (IPPO)",
+            "name": "Python: Train Isaac-Drone-Racing-Direct-Warp-v0 with skrl PPO",
             "type": "debugpy",
             "request": "launch",
-            "args" : ["--task", "Template-Diffaero-Lab-Direct-v0", "--num_envs", "4096", "--headless", "--algorithm", "IPPO"],
-            "program": "${workspaceFolder}/scripts/skrl/train.py",
-            "console": "integratedTerminal",
+            "program": "${workspaceFolder}/scripts/reinforcement_learning/skrl/train.py",
+            "args": ["--task", "Isaac-Drone-Racing-Direct-Warp-v0", "--num_envs", "4096", "--headless", "--algorithm", "PPO"],
+            "console": "integratedTerminal"
         },
         {
-            "name": "Python: Play Template-Diffaero-Lab-Direct-v0 with skrl (IPPO)",
+            "name": "Python: Train APG",
             "type": "debugpy",
             "request": "launch",
-            "args" : ["--task", "Template-Diffaero-Lab-Direct-v0", "--num_envs", "32", "--algorithm", "IPPO"],
-            "program": "${workspaceFolder}/scripts/skrl/play.py",
-            "console": "integratedTerminal",
+            "program": "${workspaceFolder}/scripts/differential/train_apg.py",
+            "args": ["--task", "Isaac-Drone-Racing-Direct-v0", "--max_iterations", "100"],
+            "console": "integratedTerminal"
         },
         {
-            "name": "Python: Train Template-Diffaero-Lab-Direct-v0 with skrl (MAPPO)",
+            "name": "Python: Train APG Stochastic",
             "type": "debugpy",
             "request": "launch",
-            "args" : ["--task", "Template-Diffaero-Lab-Direct-v0", "--num_envs", "4096", "--headless", "--algorithm", "MAPPO"],
-            "program": "${workspaceFolder}/scripts/skrl/train.py",
-            "console": "integratedTerminal",
+            "program": "${workspaceFolder}/scripts/differential/train_apg_stochastic.py",
+            "args": ["--task", "Isaac-Drone-Racing-Direct-v0", "--max_iterations", "100"],
+            "console": "integratedTerminal"
         },
         {
-            "name": "Python: Play Template-Diffaero-Lab-Direct-v0 with skrl (MAPPO)",
+            "name": "Python: Train SHAC",
             "type": "debugpy",
             "request": "launch",
-            "args" : ["--task", "Template-Diffaero-Lab-Direct-v0", "--num_envs", "32", "--algorithm", "MAPPO"],
-            "program": "${workspaceFolder}/scripts/skrl/play.py",
-            "console": "integratedTerminal",
+            "program": "${workspaceFolder}/scripts/differential/train_shac.py",
+            "args": ["--task", "Isaac-Drone-Racing-Direct-v0", "--max_iterations", "100"],
+            "console": "integratedTerminal"
         },
         {
-            "name": "Python: Train Template-Diffaero-Lab-Direct-v0 with skrl (PPO)",
+            "name": "Python: Train SHA2C",
             "type": "debugpy",
             "request": "launch",
-            "args" : ["--task", "Template-Diffaero-Lab-Direct-v0", "--num_envs", "4096", "--headless", "--algorithm", "PPO"],
-            "program": "${workspaceFolder}/scripts/skrl/train.py",
-            "console": "integratedTerminal",
-        },
-        {
-            "name": "Python: Play Template-Diffaero-Lab-Direct-v0 with skrl (PPO)",
-            "type": "debugpy",
-            "request": "launch",
-            "args" : ["--task", "Template-Diffaero-Lab-Direct-v0", "--num_envs", "32", "--algorithm", "PPO"],
-            "program": "${workspaceFolder}/scripts/skrl/play.py",
-            "console": "integratedTerminal",
-        },
-        {
-            "name": "Python: Train Template-Diffaero-Lab-Marl-Direct-v0 with skrl (AMP)",
-            "type": "debugpy",
-            "request": "launch",
-            "args" : ["--task", "Template-Diffaero-Lab-Marl-Direct-v0", "--num_envs", "4096", "--headless", "--algorithm", "AMP"],
-            "program": "${workspaceFolder}/scripts/skrl/train.py",
-            "console": "integratedTerminal",
-        },
-        {
-            "name": "Python: Play Template-Diffaero-Lab-Marl-Direct-v0 with skrl (AMP)",
-            "type": "debugpy",
-            "request": "launch",
-            "args" : ["--task", "Template-Diffaero-Lab-Marl-Direct-v0", "--num_envs", "32", "--algorithm", "AMP"],
-            "program": "${workspaceFolder}/scripts/skrl/play.py",
-            "console": "integratedTerminal",
-        },
-        {
-            "name": "Python: Train Template-Diffaero-Lab-Marl-Direct-v0 with skrl (IPPO)",
-            "type": "debugpy",
-            "request": "launch",
-            "args" : ["--task", "Template-Diffaero-Lab-Marl-Direct-v0", "--num_envs", "4096", "--headless", "--algorithm", "IPPO"],
-            "program": "${workspaceFolder}/scripts/skrl/train.py",
-            "console": "integratedTerminal",
-        },
-        {
-            "name": "Python: Play Template-Diffaero-Lab-Marl-Direct-v0 with skrl (IPPO)",
-            "type": "debugpy",
-            "request": "launch",
-            "args" : ["--task", "Template-Diffaero-Lab-Marl-Direct-v0", "--num_envs", "32", "--algorithm", "IPPO"],
-            "program": "${workspaceFolder}/scripts/skrl/play.py",
-            "console": "integratedTerminal",
-        },
-        {
-            "name": "Python: Train Template-Diffaero-Lab-Marl-Direct-v0 with skrl (MAPPO)",
-            "type": "debugpy",
-            "request": "launch",
-            "args" : ["--task", "Template-Diffaero-Lab-Marl-Direct-v0", "--num_envs", "4096", "--headless", "--algorithm", "MAPPO"],
-            "program": "${workspaceFolder}/scripts/skrl/train.py",
-            "console": "integratedTerminal",
-        },
-        {
-            "name": "Python: Play Template-Diffaero-Lab-Marl-Direct-v0 with skrl (MAPPO)",
-            "type": "debugpy",
-            "request": "launch",
-            "args" : ["--task", "Template-Diffaero-Lab-Marl-Direct-v0", "--num_envs", "32", "--algorithm", "MAPPO"],
-            "program": "${workspaceFolder}/scripts/skrl/play.py",
-            "console": "integratedTerminal",
-        },
-        {
-            "name": "Python: Train Template-Diffaero-Lab-Marl-Direct-v0 with skrl (PPO)",
-            "type": "debugpy",
-            "request": "launch",
-            "args" : ["--task", "Template-Diffaero-Lab-Marl-Direct-v0", "--num_envs", "4096", "--headless", "--algorithm", "PPO"],
-            "program": "${workspaceFolder}/scripts/skrl/train.py",
-            "console": "integratedTerminal",
-        },
-        {
-            "name": "Python: Play Template-Diffaero-Lab-Marl-Direct-v0 with skrl (PPO)",
-            "type": "debugpy",
-            "request": "launch",
-            "args" : ["--task", "Template-Diffaero-Lab-Marl-Direct-v0", "--num_envs", "32", "--algorithm", "PPO"],
-            "program": "${workspaceFolder}/scripts/skrl/play.py",
-            "console": "integratedTerminal",
-        },
-        {
-            "name": "Python: Train Template-Diffaero-Lab-v0 with skrl (AMP)",
-            "type": "debugpy",
-            "request": "launch",
-            "args" : ["--task", "Template-Diffaero-Lab-v0", "--num_envs", "4096", "--headless", "--algorithm", "AMP"],
-            "program": "${workspaceFolder}/scripts/skrl/train.py",
-            "console": "integratedTerminal",
-        },
-        {
-            "name": "Python: Play Template-Diffaero-Lab-v0 with skrl (AMP)",
-            "type": "debugpy",
-            "request": "launch",
-            "args" : ["--task", "Template-Diffaero-Lab-v0", "--num_envs", "32", "--algorithm", "AMP"],
-            "program": "${workspaceFolder}/scripts/skrl/play.py",
-            "console": "integratedTerminal",
-        },
-        {
-            "name": "Python: Train Template-Diffaero-Lab-v0 with skrl (IPPO)",
-            "type": "debugpy",
-            "request": "launch",
-            "args" : ["--task", "Template-Diffaero-Lab-v0", "--num_envs", "4096", "--headless", "--algorithm", "IPPO"],
-            "program": "${workspaceFolder}/scripts/skrl/train.py",
-            "console": "integratedTerminal",
-        },
-        {
-            "name": "Python: Play Template-Diffaero-Lab-v0 with skrl (IPPO)",
-            "type": "debugpy",
-            "request": "launch",
-            "args" : ["--task", "Template-Diffaero-Lab-v0", "--num_envs", "32", "--algorithm", "IPPO"],
-            "program": "${workspaceFolder}/scripts/skrl/play.py",
-            "console": "integratedTerminal",
-        },
-        {
-            "name": "Python: Train Template-Diffaero-Lab-v0 with skrl (MAPPO)",
-            "type": "debugpy",
-            "request": "launch",
-            "args" : ["--task", "Template-Diffaero-Lab-v0", "--num_envs", "4096", "--headless", "--algorithm", "MAPPO"],
-            "program": "${workspaceFolder}/scripts/skrl/train.py",
-            "console": "integratedTerminal",
-        },
-        {
-            "name": "Python: Play Template-Diffaero-Lab-v0 with skrl (MAPPO)",
-            "type": "debugpy",
-            "request": "launch",
-            "args" : ["--task", "Template-Diffaero-Lab-v0", "--num_envs", "32", "--algorithm", "MAPPO"],
-            "program": "${workspaceFolder}/scripts/skrl/play.py",
-            "console": "integratedTerminal",
-        },
-        {
-            "name": "Python: Train Template-Diffaero-Lab-v0 with skrl (PPO)",
-            "type": "debugpy",
-            "request": "launch",
-            "args" : ["--task", "Template-Diffaero-Lab-v0", "--num_envs", "4096", "--headless", "--algorithm", "PPO"],
-            "program": "${workspaceFolder}/scripts/skrl/train.py",
-            "console": "integratedTerminal",
-        },
-        {
-            "name": "Python: Play Template-Diffaero-Lab-v0 with skrl (PPO)",
-            "type": "debugpy",
-            "request": "launch",
-            "args" : ["--task", "Template-Diffaero-Lab-v0", "--num_envs", "32", "--algorithm", "PPO"],
-            "program": "${workspaceFolder}/scripts/skrl/play.py",
-            "console": "integratedTerminal",
-        },
-        // For script execution inside a Docker
-        {
-            "name": "Docker: Current File",
-            "type": "debugpy",
-            "request": "launch",
-            "program": "${file}",
-            "console": "integratedTerminal",
-            "env": {
-                "PYTHONPATH": "${env:PYTHONPATH}:${workspaceFolder}"
-            }
-        },
-        {
-            "name": "Docker: Train Template-Diffaero-Lab-Direct-v0 with skrl (AMP)",
-            "type": "debugpy",
-            "request": "launch",
-            "args" : ["--task", "Template-Diffaero-Lab-Direct-v0", "--num_envs", "4096", "--headless", "--algorithm", "AMP"],
-            "program": "${workspaceFolder}/scripts/skrl/train.py",
-            "console": "integratedTerminal",
-            "env": {
-                "PYTHONPATH": "${env:PYTHONPATH}:${workspaceFolder}"
-            },
-        },
-        {
-            "name": "Docker: Play Template-Diffaero-Lab-Direct-v0 with skrl (AMP)",
-            "type": "debugpy",
-            "request": "launch",
-            "args" : ["--task", "Template-Diffaero-Lab-Direct-v0", "--num_envs", "32", "--algorithm", "AMP"],
-            "program": "${workspaceFolder}/scripts/skrl/play.py",
-            "console": "integratedTerminal",
-            "env": {
-                "PYTHONPATH": "${env:PYTHONPATH}:${workspaceFolder}"
-            },
-        },
-        {
-            "name": "Docker: Train Template-Diffaero-Lab-Direct-v0 with skrl (IPPO)",
-            "type": "debugpy",
-            "request": "launch",
-            "args" : ["--task", "Template-Diffaero-Lab-Direct-v0", "--num_envs", "4096", "--headless", "--algorithm", "IPPO"],
-            "program": "${workspaceFolder}/scripts/skrl/train.py",
-            "console": "integratedTerminal",
-            "env": {
-                "PYTHONPATH": "${env:PYTHONPATH}:${workspaceFolder}"
-            },
-        },
-        {
-            "name": "Docker: Play Template-Diffaero-Lab-Direct-v0 with skrl (IPPO)",
-            "type": "debugpy",
-            "request": "launch",
-            "args" : ["--task", "Template-Diffaero-Lab-Direct-v0", "--num_envs", "32", "--algorithm", "IPPO"],
-            "program": "${workspaceFolder}/scripts/skrl/play.py",
-            "console": "integratedTerminal",
-            "env": {
-                "PYTHONPATH": "${env:PYTHONPATH}:${workspaceFolder}"
-            },
-        },
-        {
-            "name": "Docker: Train Template-Diffaero-Lab-Direct-v0 with skrl (MAPPO)",
-            "type": "debugpy",
-            "request": "launch",
-            "args" : ["--task", "Template-Diffaero-Lab-Direct-v0", "--num_envs", "4096", "--headless", "--algorithm", "MAPPO"],
-            "program": "${workspaceFolder}/scripts/skrl/train.py",
-            "console": "integratedTerminal",
-            "env": {
-                "PYTHONPATH": "${env:PYTHONPATH}:${workspaceFolder}"
-            },
-        },
-        {
-            "name": "Docker: Play Template-Diffaero-Lab-Direct-v0 with skrl (MAPPO)",
-            "type": "debugpy",
-            "request": "launch",
-            "args" : ["--task", "Template-Diffaero-Lab-Direct-v0", "--num_envs", "32", "--algorithm", "MAPPO"],
-            "program": "${workspaceFolder}/scripts/skrl/play.py",
-            "console": "integratedTerminal",
-            "env": {
-                "PYTHONPATH": "${env:PYTHONPATH}:${workspaceFolder}"
-            },
-        },
-        {
-            "name": "Docker: Train Template-Diffaero-Lab-Direct-v0 with skrl (PPO)",
-            "type": "debugpy",
-            "request": "launch",
-            "args" : ["--task", "Template-Diffaero-Lab-Direct-v0", "--num_envs", "4096", "--headless", "--algorithm", "PPO"],
-            "program": "${workspaceFolder}/scripts/skrl/train.py",
-            "console": "integratedTerminal",
-            "env": {
-                "PYTHONPATH": "${env:PYTHONPATH}:${workspaceFolder}"
-            },
-        },
-        {
-            "name": "Docker: Play Template-Diffaero-Lab-Direct-v0 with skrl (PPO)",
-            "type": "debugpy",
-            "request": "launch",
-            "args" : ["--task", "Template-Diffaero-Lab-Direct-v0", "--num_envs", "32", "--algorithm", "PPO"],
-            "program": "${workspaceFolder}/scripts/skrl/play.py",
-            "console": "integratedTerminal",
-            "env": {
-                "PYTHONPATH": "${env:PYTHONPATH}:${workspaceFolder}"
-            },
-        },
-        {
-            "name": "Docker: Train Template-Diffaero-Lab-Marl-Direct-v0 with skrl (AMP)",
-            "type": "debugpy",
-            "request": "launch",
-            "args" : ["--task", "Template-Diffaero-Lab-Marl-Direct-v0", "--num_envs", "4096", "--headless", "--algorithm", "AMP"],
-            "program": "${workspaceFolder}/scripts/skrl/train.py",
-            "console": "integratedTerminal",
-            "env": {
-                "PYTHONPATH": "${env:PYTHONPATH}:${workspaceFolder}"
-            },
-        },
-        {
-            "name": "Docker: Play Template-Diffaero-Lab-Marl-Direct-v0 with skrl (AMP)",
-            "type": "debugpy",
-            "request": "launch",
-            "args" : ["--task", "Template-Diffaero-Lab-Marl-Direct-v0", "--num_envs", "32", "--algorithm", "AMP"],
-            "program": "${workspaceFolder}/scripts/skrl/play.py",
-            "console": "integratedTerminal",
-            "env": {
-                "PYTHONPATH": "${env:PYTHONPATH}:${workspaceFolder}"
-            },
-        },
-        {
-            "name": "Docker: Train Template-Diffaero-Lab-Marl-Direct-v0 with skrl (IPPO)",
-            "type": "debugpy",
-            "request": "launch",
-            "args" : ["--task", "Template-Diffaero-Lab-Marl-Direct-v0", "--num_envs", "4096", "--headless", "--algorithm", "IPPO"],
-            "program": "${workspaceFolder}/scripts/skrl/train.py",
-            "console": "integratedTerminal",
-            "env": {
-                "PYTHONPATH": "${env:PYTHONPATH}:${workspaceFolder}"
-            },
-        },
-        {
-            "name": "Docker: Play Template-Diffaero-Lab-Marl-Direct-v0 with skrl (IPPO)",
-            "type": "debugpy",
-            "request": "launch",
-            "args" : ["--task", "Template-Diffaero-Lab-Marl-Direct-v0", "--num_envs", "32", "--algorithm", "IPPO"],
-            "program": "${workspaceFolder}/scripts/skrl/play.py",
-            "console": "integratedTerminal",
-            "env": {
-                "PYTHONPATH": "${env:PYTHONPATH}:${workspaceFolder}"
-            },
-        },
-        {
-            "name": "Docker: Train Template-Diffaero-Lab-Marl-Direct-v0 with skrl (MAPPO)",
-            "type": "debugpy",
-            "request": "launch",
-            "args" : ["--task", "Template-Diffaero-Lab-Marl-Direct-v0", "--num_envs", "4096", "--headless", "--algorithm", "MAPPO"],
-            "program": "${workspaceFolder}/scripts/skrl/train.py",
-            "console": "integratedTerminal",
-            "env": {
-                "PYTHONPATH": "${env:PYTHONPATH}:${workspaceFolder}"
-            },
-        },
-        {
-            "name": "Docker: Play Template-Diffaero-Lab-Marl-Direct-v0 with skrl (MAPPO)",
-            "type": "debugpy",
-            "request": "launch",
-            "args" : ["--task", "Template-Diffaero-Lab-Marl-Direct-v0", "--num_envs", "32", "--algorithm", "MAPPO"],
-            "program": "${workspaceFolder}/scripts/skrl/play.py",
-            "console": "integratedTerminal",
-            "env": {
-                "PYTHONPATH": "${env:PYTHONPATH}:${workspaceFolder}"
-            },
-        },
-        {
-            "name": "Docker: Train Template-Diffaero-Lab-Marl-Direct-v0 with skrl (PPO)",
-            "type": "debugpy",
-            "request": "launch",
-            "args" : ["--task", "Template-Diffaero-Lab-Marl-Direct-v0", "--num_envs", "4096", "--headless", "--algorithm", "PPO"],
-            "program": "${workspaceFolder}/scripts/skrl/train.py",
-            "console": "integratedTerminal",
-            "env": {
-                "PYTHONPATH": "${env:PYTHONPATH}:${workspaceFolder}"
-            },
-        },
-        {
-            "name": "Docker: Play Template-Diffaero-Lab-Marl-Direct-v0 with skrl (PPO)",
-            "type": "debugpy",
-            "request": "launch",
-            "args" : ["--task", "Template-Diffaero-Lab-Marl-Direct-v0", "--num_envs", "32", "--algorithm", "PPO"],
-            "program": "${workspaceFolder}/scripts/skrl/play.py",
-            "console": "integratedTerminal",
-            "env": {
-                "PYTHONPATH": "${env:PYTHONPATH}:${workspaceFolder}"
-            },
-        },
-        {
-            "name": "Docker: Train Template-Diffaero-Lab-v0 with skrl (AMP)",
-            "type": "debugpy",
-            "request": "launch",
-            "args" : ["--task", "Template-Diffaero-Lab-v0", "--num_envs", "4096", "--headless", "--algorithm", "AMP"],
-            "program": "${workspaceFolder}/scripts/skrl/train.py",
-            "console": "integratedTerminal",
-            "env": {
-                "PYTHONPATH": "${env:PYTHONPATH}:${workspaceFolder}"
-            },
-        },
-        {
-            "name": "Docker: Play Template-Diffaero-Lab-v0 with skrl (AMP)",
-            "type": "debugpy",
-            "request": "launch",
-            "args" : ["--task", "Template-Diffaero-Lab-v0", "--num_envs", "32", "--algorithm", "AMP"],
-            "program": "${workspaceFolder}/scripts/skrl/play.py",
-            "console": "integratedTerminal",
-            "env": {
-                "PYTHONPATH": "${env:PYTHONPATH}:${workspaceFolder}"
-            },
-        },
-        {
-            "name": "Docker: Train Template-Diffaero-Lab-v0 with skrl (IPPO)",
-            "type": "debugpy",
-            "request": "launch",
-            "args" : ["--task", "Template-Diffaero-Lab-v0", "--num_envs", "4096", "--headless", "--algorithm", "IPPO"],
-            "program": "${workspaceFolder}/scripts/skrl/train.py",
-            "console": "integratedTerminal",
-            "env": {
-                "PYTHONPATH": "${env:PYTHONPATH}:${workspaceFolder}"
-            },
-        },
-        {
-            "name": "Docker: Play Template-Diffaero-Lab-v0 with skrl (IPPO)",
-            "type": "debugpy",
-            "request": "launch",
-            "args" : ["--task", "Template-Diffaero-Lab-v0", "--num_envs", "32", "--algorithm", "IPPO"],
-            "program": "${workspaceFolder}/scripts/skrl/play.py",
-            "console": "integratedTerminal",
-            "env": {
-                "PYTHONPATH": "${env:PYTHONPATH}:${workspaceFolder}"
-            },
-        },
-        {
-            "name": "Docker: Train Template-Diffaero-Lab-v0 with skrl (MAPPO)",
-            "type": "debugpy",
-            "request": "launch",
-            "args" : ["--task", "Template-Diffaero-Lab-v0", "--num_envs", "4096", "--headless", "--algorithm", "MAPPO"],
-            "program": "${workspaceFolder}/scripts/skrl/train.py",
-            "console": "integratedTerminal",
-            "env": {
-                "PYTHONPATH": "${env:PYTHONPATH}:${workspaceFolder}"
-            },
-        },
-        {
-            "name": "Docker: Play Template-Diffaero-Lab-v0 with skrl (MAPPO)",
-            "type": "debugpy",
-            "request": "launch",
-            "args" : ["--task", "Template-Diffaero-Lab-v0", "--num_envs", "32", "--algorithm", "MAPPO"],
-            "program": "${workspaceFolder}/scripts/skrl/play.py",
-            "console": "integratedTerminal",
-            "env": {
-                "PYTHONPATH": "${env:PYTHONPATH}:${workspaceFolder}"
-            },
-        },
-        {
-            "name": "Docker: Train Template-Diffaero-Lab-v0 with skrl (PPO)",
-            "type": "debugpy",
-            "request": "launch",
-            "args" : ["--task", "Template-Diffaero-Lab-v0", "--num_envs", "4096", "--headless", "--algorithm", "PPO"],
-            "program": "${workspaceFolder}/scripts/skrl/train.py",
-            "console": "integratedTerminal",
-            "env": {
-                "PYTHONPATH": "${env:PYTHONPATH}:${workspaceFolder}"
-            },
-        },
-        {
-            "name": "Docker: Play Template-Diffaero-Lab-v0 with skrl (PPO)",
-            "type": "debugpy",
-            "request": "launch",
-            "args" : ["--task", "Template-Diffaero-Lab-v0", "--num_envs", "32", "--algorithm", "PPO"],
-            "program": "${workspaceFolder}/scripts/skrl/play.py",
-            "console": "integratedTerminal",
-            "env": {
-                "PYTHONPATH": "${env:PYTHONPATH}:${workspaceFolder}"
-            },
-        },
+            "program": "${workspaceFolder}/scripts/differential/train_sha2c.py",
+            "args": ["--task", "Isaac-Drone-Racing-Direct-v0", "--max_iterations", "100"],
+            "console": "integratedTerminal"
+        }
     ]
 }

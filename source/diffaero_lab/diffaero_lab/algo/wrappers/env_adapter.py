@@ -17,6 +17,7 @@ from typing import Any
 import gymnasium as gym
 import numpy as np
 import torch
+from importlib import import_module
 
 from diffaero_lab.common.keys import EXTRA_SIM_STATE, EXTRA_TASK_TERMS, OBS_CRITIC, OBS_POLICY
 
@@ -81,15 +82,13 @@ class DifferentialEnvAdapter:
             DifferentialEnvAdapter instance
         """
         if cfg is None:
-            # Use task-specific default config instead of hardcoding PhysX config
-            if "Warp" in task_id:
-                from diffaero_lab.tasks.direct.drone_racing.drone_racing_env_warp_cfg import DroneRacingWarpEnvCfg
-
-                cfg = DroneRacingWarpEnvCfg()
+            spec = gym.spec(task_id)
+            cfg_entry = spec.kwargs.get("env_cfg_entry_point")
+            if isinstance(cfg_entry, str):
+                module_name, attr_name = cfg_entry.split(":")
+                cfg = getattr(import_module(module_name), attr_name)()
             else:
-                from diffaero_lab.tasks.direct.drone_racing.drone_racing_env_cfg import DroneRacingEnvCfg
-
-                cfg = DroneRacingEnvCfg()
+                cfg = cfg_entry()
             cfg.scene.num_envs = 64
         env = gym.make(task_id, cfg=cfg)
         return cls(env)
@@ -137,8 +136,10 @@ class DifferentialEnvAdapter:
         assert OBS_POLICY in observations, f"observations must contain '{OBS_POLICY}'"
         assert OBS_CRITIC in observations, f"observations must contain '{OBS_CRITIC}'"
         if extras:
-            assert EXTRA_TASK_TERMS in extras, f"extras must contain '{EXTRA_TASK_TERMS}'"
-            assert EXTRA_SIM_STATE in extras, f"extras must contain '{EXTRA_SIM_STATE}'"
+            has_runtime_state = EXTRA_TASK_TERMS in extras or EXTRA_SIM_STATE in extras
+            if has_runtime_state:
+                assert EXTRA_TASK_TERMS in extras, f"extras must contain '{EXTRA_TASK_TERMS}'"
+                assert EXTRA_SIM_STATE in extras, f"extras must contain '{EXTRA_SIM_STATE}'"
 
     def get_policy_action(self) -> torch.Tensor:
         """Get zero action tensor of correct shape for policy.

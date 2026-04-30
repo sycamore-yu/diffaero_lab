@@ -8,8 +8,8 @@
 import torch
 
 from diffaero_lab.algo.algorithms.apg import APG, APGConfig
+from diffaero_lab.algo.trainers.common import trainer_loss
 from diffaero_lab.algo.wrappers.env_adapter import DifferentialEnvAdapter
-from diffaero_lab.common.keys import EXTRA_TASK_TERMS
 
 
 class APGTrainer:
@@ -55,14 +55,5 @@ class APGTrainer:
         for _ in range(self.rollout_horizon):
             action, policy_info = self.apg.act(batch.observations["policy"])
             batch.observations, rewards, terminated, truncated, batch.extras = self.env.step(action)
-
-            if EXTRA_TASK_TERMS in batch.extras:
-                task_terms = batch.extras[EXTRA_TASK_TERMS]
-                if "progress" in task_terms:
-                    loss = -task_terms["progress"].mean()
-                else:
-                    loss = -rewards.mean()
-            else:
-                loss = -rewards.mean()
-
+            loss = trainer_loss(rewards, batch.extras)
             self.apg.record_loss(loss, policy_info, batch.extras)

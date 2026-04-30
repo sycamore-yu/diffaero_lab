@@ -3,8 +3,9 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
-import torch
 from torch import Tensor
+
+from diffaero_lab.common.sim_contract import build_sim_state as build_shared_sim_state
 
 
 def build_sim_state(
@@ -19,15 +20,15 @@ def build_sim_state(
     target_position_w: Tensor,
     dynamics_info: dict,
 ) -> dict[str, Tensor | dict]:
-    return {
-        "position_w": position_w,
-        "quaternion_w": quaternion_w,
-        "linear_velocity_w": linear_velocity_w,
-        "angular_velocity_b": angular_velocity_b,
-        "motor_omega": motor_omega,
-        "step_count": step_count,
-        "last_action": last_action,
-        "progress": progress,
-        "target_position_w": target_position_w,
-        "dynamics": dynamics_info,
-    }
+    return build_shared_sim_state(
+        position_w=position_w,
+        quaternion_w=quaternion_w,
+        linear_velocity_w=linear_velocity_w,
+        angular_velocity_b=angular_velocity_b,
+        motor_omega=motor_omega,
+        step_count=step_count,
+        last_action=last_action,
+        progress=progress,
+        target_position_w=target_position_w,
+        dynamics_info=dynamics_info,
+    )

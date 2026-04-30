@@ -15,28 +15,28 @@ import torch
 
 def test_pmd_is_registered_in_dynamics_registry():
     """Verify pmd (point-mass discrete) backend is registered in DYNAMICS_REGISTRY."""
-    from diffaero_uav.dynamics.registry import DYNAMICS_REGISTRY
+    from diffaero_lab.uav.dynamics.registry import DYNAMICS_REGISTRY
 
     assert "pmd" in DYNAMICS_REGISTRY, "pmd backend must be registered in DYNAMICS_REGISTRY"
 
 
 def test_pmc_is_registered_in_dynamics_registry():
     """Verify pmc (point-mass continuous) backend is registered in DYNAMICS_REGISTRY."""
-    from diffaero_uav.dynamics.registry import DYNAMICS_REGISTRY
+    from diffaero_lab.uav.dynamics.registry import DYNAMICS_REGISTRY
 
     assert "pmc" in DYNAMICS_REGISTRY, "pmc backend must be registered in DYNAMICS_REGISTRY"
 
 
 def test_simple_is_registered_in_dynamics_registry():
     """Verify simple (simplified quadrotor) backend is registered in DYNAMICS_REGISTRY."""
-    from diffaero_uav.dynamics.registry import DYNAMICS_REGISTRY
+    from diffaero_lab.uav.dynamics.registry import DYNAMICS_REGISTRY
 
     assert "simple" in DYNAMICS_REGISTRY, "simple backend must be registered in DYNAMICS_REGISTRY"
 
 
 def test_pmd_dynamics_model_entry_in_env_cfg():
     """Verify DroneRacingEnvCfg supports dynamics_model='pmd' selection."""
-    from diffaero_env.tasks.direct.drone_racing.drone_racing_env_cfg import DroneRacingEnvCfg
+    from diffaero_lab.tasks.direct.drone_racing.drone_racing_env_cfg import DroneRacingEnvCfg
 
     cfg = DroneRacingEnvCfg()
     # dynamics_model field must exist and be settable
@@ -47,7 +47,7 @@ def test_pmd_dynamics_model_entry_in_env_cfg():
 
 def test_pmc_dynamics_model_entry_in_env_cfg():
     """Verify DroneRacingEnvCfg supports dynamics_model='pmc' selection."""
-    from diffaero_env.tasks.direct.drone_racing.drone_racing_env_cfg import DroneRacingEnvCfg
+    from diffaero_lab.tasks.direct.drone_racing.drone_racing_env_cfg import DroneRacingEnvCfg
 
     cfg = DroneRacingEnvCfg()
     assert hasattr(cfg, "dynamics_model"), "DroneRacingEnvCfg must have dynamics_model field"
@@ -57,7 +57,7 @@ def test_pmc_dynamics_model_entry_in_env_cfg():
 
 def test_simple_dynamics_model_entry_in_env_cfg():
     """Verify DroneRacingEnvCfg supports dynamics_model='simple' selection."""
-    from diffaero_env.tasks.direct.drone_racing.drone_racing_env_cfg import DroneRacingEnvCfg
+    from diffaero_lab.tasks.direct.drone_racing.drone_racing_env_cfg import DroneRacingEnvCfg
 
     cfg = DroneRacingEnvCfg()
     assert hasattr(cfg, "dynamics_model"), "DroneRacingEnvCfg must have dynamics_model field"
@@ -67,7 +67,7 @@ def test_simple_dynamics_model_entry_in_env_cfg():
 
 def test_build_dynamics_pmd_succeeds():
     """Verify build_dynamics('pmd', ...) returns a dynamics model instance."""
-    from diffaero_uav.dynamics.registry import build_dynamics
+    from diffaero_lab.uav.dynamics.registry import build_dynamics
 
     # This will raise ValueError if pmd is not registered
     class FakeCfg:
@@ -79,7 +79,7 @@ def test_build_dynamics_pmd_succeeds():
 
 def test_build_dynamics_pmc_succeeds():
     """Verify build_dynamics('pmc', ...) returns a dynamics model instance."""
-    from diffaero_uav.dynamics.registry import build_dynamics
+    from diffaero_lab.uav.dynamics.registry import build_dynamics
 
     class FakeCfg:
         pass
@@ -90,7 +90,7 @@ def test_build_dynamics_pmc_succeeds():
 
 def test_build_dynamics_simple_succeeds():
     """Verify build_dynamics('simple', ...) returns a dynamics model instance."""
-    from diffaero_uav.dynamics.registry import build_dynamics
+    from diffaero_lab.uav.dynamics.registry import build_dynamics
 
     class FakeCfg:
         pass
@@ -101,6 +101,6 @@ def test_build_dynamics_simple_succeeds():
 
 def test_quad_still_registered():
     """Verify the original quad backend remains registered after adding new backends."""
-    from diffaero_uav.dynamics.registry import DYNAMICS_REGISTRY
+    from diffaero_lab.uav.dynamics.registry import DYNAMICS_REGISTRY
 
     assert "quad" in DYNAMICS_REGISTRY, "quad backend must remain registered"

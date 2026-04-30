@@ -47,7 +47,17 @@ class NewtonBackendAdapter:
     def _ensure_body_wrench_params(self) -> None:
         if self._body_id is None:
             if self.robot is not None and hasattr(self.robot, "find_bodies"):
-                body_ids = self.robot.find_bodies("body")[0]
+                body_ids = None
+                for body_name in ("body", "base_link"):
+                    try:
+                        candidate = self.robot.find_bodies(body_name)[0]
+                    except ValueError:
+                        continue
+                    if len(candidate) > 0:
+                        body_ids = candidate
+                        break
+                if body_ids is None:
+                    body_ids = [0]
                 if not torch.is_tensor(body_ids):
                     body_ids = torch.tensor(body_ids, dtype=torch.int32, device=self.device)
                 self._body_id = body_ids.to(device=self.device, dtype=torch.int32)

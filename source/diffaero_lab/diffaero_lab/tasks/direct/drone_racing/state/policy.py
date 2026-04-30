@@ -12,11 +12,11 @@ def build_policy_obs(
     quaternion_w: Tensor,
     linear_velocity_w: Tensor,
     angular_velocity_b: Tensor,
-    last_action: Tensor,
     target_position_w: Tensor,
     target_yaw: Tensor,
     next_target_position_w: Tensor,
     next_target_yaw: Tensor,
+    last_action: Tensor | None = None,
 ) -> Tensor:
     from diffaero_lab.tasks.direct.drone_racing.mdp.gates import gate_frame_state, gate_rotmat_w2g, transform_w_to_gate, wrap_pi
 

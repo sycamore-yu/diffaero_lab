@@ -13,12 +13,8 @@ import isaaclab.sim as sim_utils
 from isaaclab.envs import DirectRLEnv
 from isaaclab.sim.spawners.from_files import GroundPlaneCfg, spawn_ground_plane
 
-from diffaero_lab.common.keys import EXTRA_SIM_STATE, EXTRA_TASK_TERMS, OBS_POLICY
+from diffaero_lab.common.keys import EXTRA_CAPABILITIES, EXTRA_SIM_STATE, EXTRA_TASK_TERMS, OBS_POLICY
 from diffaero_lab.tasks.direct.drone_racing.drone_racing_env_cfg import DroneRacingEnvCfg
-from diffaero_lab.tasks.direct.drone_racing.dynamics_bridge.pointmass_continuous import PMCDynamicsBridge
-from diffaero_lab.tasks.direct.drone_racing.dynamics_bridge.pointmass_discrete import PMDDynamicsBridge
-from diffaero_lab.tasks.direct.drone_racing.dynamics_bridge.quad import QuadDynamicsBridge
-from diffaero_lab.tasks.direct.drone_racing.dynamics_bridge.simplified_quad import SimpleDynamicsBridge
 from diffaero_lab.tasks.direct.drone_racing.mdp import (
     compute_dones,
     compute_observations,
@@ -26,29 +22,16 @@ from diffaero_lab.tasks.direct.drone_racing.mdp import (
     reset_body_state,
 )
 from diffaero_lab.tasks.direct.drone_racing.state.sim_state import build_sim_state
-from diffaero_lab.uav.adapters import build_newton_adapter
-from diffaero_lab.uav.adapters.newton import NewtonBackendAdapter
-
-_BRIDGE_CLASSES = {
-    "quad": QuadDynamicsBridge,
-    "pmd": PMDDynamicsBridge,
-    "pmc": PMCDynamicsBridge,
-    "simple": SimpleDynamicsBridge,
-}
+from diffaero_lab.uav.route_registry import RouteRegistry, RouteSpec
 
 
 class DroneRacingEnv(DirectRLEnv):
     cfg: DroneRacingEnvCfg
 
     def __init__(self, cfg: DroneRacingEnvCfg, render_mode: str | None = None, **kwargs: Any):
-        self._bridge: (
-            QuadDynamicsBridge
-            | PMDDynamicsBridge
-            | PMCDynamicsBridge
-            | SimpleDynamicsBridge
-            | NewtonBackendAdapter
-            | None
-        ) = None
+        self._bridge = None
+        self._route_spec: RouteSpec | None = None
+        self._capabilities: dict[str, bool] = {}
         self._prev_action: torch.Tensor | None = None
         self._prev_position_w: torch.Tensor | None = None
         self._gate_index: torch.Tensor | None = None
@@ -65,28 +48,13 @@ class DroneRacingEnv(DirectRLEnv):
             self.scene.filter_collisions(global_prim_paths=[])
         light_cfg = sim_utils.DomeLightCfg(intensity=2000.0, color=(0.75, 0.75, 0.75))
         light_cfg.func("/World/Light", light_cfg)
-
-        dynamics_model = getattr(self.cfg, "dynamics_model", "quad")
-        # Check if this is a Warp/Newton backend by looking at sim.physics type
-        sim_physics = getattr(self.cfg.sim, "physics", None)
-        is_warp = sim_physics is not None and "Newton" in type(sim_physics).__name__
-
-        if is_warp and dynamics_model == "quad":
-            self._bridge = build_newton_adapter(
-                cfg=self.cfg,
-                robot=self.robot,
-                num_envs=self.num_envs,
-                device=self.device,
-                backend="warp",
-            )
-        else:
-            bridge_cls = _BRIDGE_CLASSES.get(dynamics_model, QuadDynamicsBridge)
-            self._bridge = bridge_cls(
-                cfg=self.cfg,
-                robot=self.robot,
-                num_envs=self.num_envs,
-                device=self.device,
-            )
+        self._bridge, self._route_spec = RouteRegistry.build_adapter(
+            cfg=self.cfg,
+            robot=self.robot,
+            num_envs=self.num_envs,
+            device=self.device,
+        )
+        self._capabilities = self._route_spec.build_capabilities(supports_critic_state=self.cfg.state_space > 0)
 
         self.actions = torch.zeros(self.num_envs, self.cfg.action_space, device=self.device)
         self._prev_action = torch.zeros_like(self.actions)
@@ -166,6 +134,7 @@ class DroneRacingEnv(DirectRLEnv):
             self._bridge.apply_to_sim()
 
     def _get_observations(self) -> dict[str, torch.Tensor]:
+        self._update_shared_extras()
         if self._bridge is None:
             return {OBS_POLICY: torch.zeros(self.num_envs, 0, device=self.device)}
         bridge_state = self._bridge.read_base_state()
@@ -175,7 +144,6 @@ class DroneRacingEnv(DirectRLEnv):
         target_position_w, target_yaw, next_target_position_w, next_target_yaw = self._gate_targets()
         return compute_observations(
             full_state,
-            self.actions,
             enable_critic,
             target_position_w=target_position_w,
             target_yaw=target_yaw,
@@ -183,12 +151,23 @@ class DroneRacingEnv(DirectRLEnv):
             next_target_yaw=next_target_yaw,
         )
 
+    def _update_shared_extras(self) -> None:
+        self.extras[EXTRA_CAPABILITIES] = self._capabilities
+
     def _get_rewards(self) -> torch.Tensor:
         if self._bridge is None:
             return torch.zeros(self.num_envs, device=self.device)
         bridge_state = self._bridge.read_base_state()
         motor_state = self._bridge.read_motor_state()
         dynamics_info = self._bridge.read_dynamics_info()
+        if self._route_spec is not None:
+            dynamics_info = {
+                **dynamics_info,
+                "physics_route": self._route_spec.physics_route,
+                "tensor_backend": self._route_spec.tensor_backend,
+                "write_mode": self._route_spec.write_mode,
+                "quat_convention": self._route_spec.quat_convention,
+            }
 
         position_w = bridge_state["position_w"]
         target_position_w, target_yaw, _, _ = self._gate_targets()
@@ -233,6 +212,7 @@ class DroneRacingEnv(DirectRLEnv):
 
         self.extras[EXTRA_TASK_TERMS] = task_terms
         self.extras[EXTRA_SIM_STATE] = sim_state
+        self.extras[EXTRA_CAPABILITIES] = self._capabilities
 
         return total_reward
 
@@ -281,3 +261,4 @@ class DroneRacingEnv(DirectRLEnv):
         if init_pos.shape[0] > 0:
             self._init_position_w[env_ids_index] = init_pos
         self._prev_position_w[env_ids_index] = init_pos
+        self._update_shared_extras()

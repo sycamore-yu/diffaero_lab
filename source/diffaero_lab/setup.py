@@ -21,7 +21,7 @@ INSTALL_REQUIRES = [
     "psutil",
 ]
 
-PACKAGES = find_packages(where=".", include="diffaero_lab.*")
+PACKAGES = find_packages(where=".", include=["diffaero_lab", "diffaero_lab.*"])
 
 setup(
     name="diffaero_lab",

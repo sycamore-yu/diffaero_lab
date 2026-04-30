@@ -8,8 +8,8 @@
 import torch
 
 from diffaero_lab.algo.algorithms.shac import SHAC, SHACConfig
+from diffaero_lab.algo.trainers.common import trainer_loss
 from diffaero_lab.algo.wrappers.env_adapter import DifferentialEnvAdapter
-from diffaero_lab.common.keys import EXTRA_TASK_TERMS
 
 
 class SHACTrainer:
@@ -67,14 +67,5 @@ class SHACTrainer:
             critic_obs = batch.observations["critic"]
             value = self.shac.critic_forward(critic_obs)
             self.shac.record_value(critic_obs, value)
-
-            if EXTRA_TASK_TERMS in batch.extras:
-                task_terms = batch.extras[EXTRA_TASK_TERMS]
-                if "progress" in task_terms:
-                    loss = -task_terms["progress"].mean()
-                else:
-                    loss = -rewards.mean()
-            else:
-                loss = -rewards.mean()
-
+            loss = trainer_loss(rewards, batch.extras)
             self.shac.record_loss(loss, policy_info, batch.extras, reward=rewards, terminated=terminated)

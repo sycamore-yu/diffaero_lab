@@ -6,8 +6,9 @@
 """APG Stochastic trainer that orchestrates rollout and backward pass with stochastic policies."""
 
 from diffaero_lab.algo.algorithms.apg_stochastic import APGStochastic, APGStochasticConfig
+from diffaero_lab.algo.trainers.common import direct_differential_rollout
 from diffaero_lab.algo.wrappers.env_adapter import DifferentialEnvAdapter
-from diffaero_lab.common.keys import EXTRA_SIM_STATE, EXTRA_TASK_TERMS
+from diffaero_lab.common.keys import EXTRA_TASK_TERMS
 
 
 class APGStochasticTrainer:
@@ -56,9 +57,7 @@ class APGStochasticTrainer:
             batch.observations, rewards, terminated, truncated, batch.extras = self.env.step(action)
 
             task_terms = batch.extras[EXTRA_TASK_TERMS]
-            sim_state = batch.extras.get(EXTRA_SIM_STATE, {})
-            dynamics = sim_state.get("dynamics", {}) if isinstance(sim_state, dict) else {}
-            if dynamics.get("tensor_backend") == "warp":
+            if direct_differential_rollout(batch.extras):
                 self.apg.record_loss(task_terms["loss"], policy_info, batch.extras)
             else:
                 self.apg.record_policy_gradient_loss(rewards, policy_info)

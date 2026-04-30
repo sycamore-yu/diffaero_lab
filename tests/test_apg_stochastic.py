@@ -20,8 +20,8 @@ import torch
 import isaaclab.sim as sim_utils
 from isaaclab.app.settings_manager import get_settings_manager
 
-import diffaero_env.tasks  # noqa: F401
-from diffaero_algo.wrappers.env_adapter import DifferentialEnvAdapter
+import diffaero_lab.tasks  # noqa: F401
+from tests.isaac_test_utils import make_cpu_test_adapter
 
 get_settings_manager().set_bool("/physics/cooking/ujitsoCollisionCooking", False)
 
@@ -29,19 +29,17 @@ get_settings_manager().set_bool("/physics/cooking/ujitsoCollisionCooking", False
 @pytest.fixture(scope="module")
 def shared_env():
     """Shared adapter for all tests in this module."""
-    sim_utils.create_new_stage()
-    get_settings_manager().set_bool("/isaaclab/render/rtx_sensors", False)
-    adapter = DifferentialEnvAdapter.make("Isaac-Drone-Racing-Direct-v0")
+    adapter = make_cpu_test_adapter()
     yield adapter
     adapter.close()
 
 
 def test_apg_stochastic_actor_outputs_action_and_log_prob():
     """Test that APGStochastic actor produces action and log_prob via stochastic sampling."""
-    from diffaero_algo.algorithms.apg_stochastic import APGStochastic, APGStochasticConfig
+    from diffaero_lab.algo.algorithms.apg_stochastic import APGStochastic, APGStochasticConfig
 
-    policy = APGStochastic(APGStochasticConfig(), obs_dim=17, action_dim=4, device="cpu")
-    obs = torch.zeros(8, 17)
+    policy = APGStochastic(APGStochasticConfig(), obs_dim=13, action_dim=4, device="cpu")
+    obs = torch.zeros(8, 13)
     action, info = policy.act(obs)
     assert action.shape == (8, 4), f"Expected action shape (8, 4), got {action.shape}"
     assert "log_prob" in info, "Expected 'log_prob' key in policy_info"
@@ -49,8 +47,8 @@ def test_apg_stochastic_actor_outputs_action_and_log_prob():
 
 def test_apg_stochastic_rollout_and_update_smoke(shared_env):
     """Integration smoke test: adapter + APGStochasticTrainer stochastic rollout and update."""
-    from diffaero_algo.algorithms.apg_stochastic import APGStochastic, APGStochasticConfig
-    from diffaero_algo.trainers.apg_stochastic_trainer import APGStochasticTrainer
+    from diffaero_lab.algo.algorithms.apg_stochastic import APGStochastic, APGStochasticConfig
+    from diffaero_lab.algo.trainers.apg_stochastic_trainer import APGStochasticTrainer
 
     cfg = APGStochasticConfig(
         lr=3e-4,
