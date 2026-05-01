@@ -8,45 +8,48 @@ line-length = 120
 target-version = "py310"
 
 # Exclude directories
-extend-exclude = [
-    "logs",
-    "_isaac_sim",
-    ".vscode",
-    "_*",
-    ".git",
-]
+extend-exclude = ["logs", "_isaac_sim", ".vscode", "_*", ".git"]
 
 [tool.ruff.lint]
 # Enable flake8 rules and other useful ones
 select = [
-    "E",      # pycodestyle errors
-    "W",      # pycodestyle warnings
-    "F",      # pyflakes
-    "I",      # isort
-    "UP",     # pyupgrade
-    "C90",    # mccabe complexity
-    # "D",      # pydocstyle
-    "SIM",    # flake8-simplify
-    "RET",    # flake8-return
+  "E",   # pycodestyle errors
+  "W",   # pycodestyle warnings
+  "F",   # pyflakes
+  "I",   # isort
+  "UP",  # pyupgrade
+  "C90", # mccabe complexity
+  # "D",      # pydocstyle
+  "SIM", # flake8-simplify
+  "RET", # flake8-return
 ]
 
 # Ignore specific rules (matching your flake8 config)
 ignore = [
-    "E402",   # Module level import not at top of file
-    "D401",   # First line should be in imperative mood
-    "RET504", # Unnecessary variable assignment before return statement
-    "RET505", # Unnecessary elif after return statement
-    "SIM102", # Use a single if-statement instead of nested if-statements
-    "SIM103", # Return the negated condition directly
-    "SIM108", # Use ternary operator instead of if-else statement
-    "SIM117", # Merge with statements for context managers
-    "SIM118", # Use {key} in {dict} instead of {key} in {dict}.keys()
-    "UP006",  # Use 'dict' instead of 'Dict' type annotation
-    "UP018",  # Unnecessary `float` call (rewrite as a literal)
+  "E402",   # Module level import not at top of file
+  "D401",   # First line should be in imperative mood
+  "RET504", # Unnecessary variable assignment before return statement
+  "RET505", # Unnecessary elif after return statement
+  "SIM102", # Use a single if-statement instead of nested if-statements
+  "SIM103", # Return the negated condition directly
+  "SIM108", # Use ternary operator instead of if-else statement
+  "SIM117", # Merge with statements for context managers
+  "SIM118", # Use {key} in {dict} instead of {key} in {dict}.keys()
+  "UP006",  # Use 'dict' instead of 'Dict' type annotation
+  "UP018",  # Unnecessary `float` call (rewrite as a literal)
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"__init__.py" = ["F401"]  # Allow unused imports in __init__.py files
+"__init__.py" = ["F401"] # Allow unused imports in __init__.py files
+"**/uav/differential/kernels.py" = [
+  "F722",
+  "F821",
+] # ruff doesn't understand Warp @wp.kernel DSL
+"**/uav/differential/model.py" = ["F821"] # Warp structs use wp.* DSL types
+"**/uav/differential/rollout.py" = [
+  "F722",
+  "F821",
+] # ruff doesn't understand Warp @wp.kernel DSL
 
 [tool.ruff.lint.mccabe]
 max-complexity = 30
@@ -58,35 +61,35 @@ convention = "google"
 
 # Custom import sections with separate sections for each Isaac Lab extension
 section-order = [
-    "future",
-    "standard-library",
-    "third-party",
-    # Group omniverse extensions separately since they are run-time dependencies
-    # which are pulled in by Isaac Lab extensions
-    "omniverse-extensions",
-    # Group Isaac Lab extensions together since they are all part of the Isaac Lab project
-    "isaaclab",
-    "isaaclab-contrib",
-    "isaaclab-rl",
-    "isaaclab-mimic",
-    "isaaclab-tasks",
-    "isaaclab-assets",
-    # First-party is reserved for project templates
-    "first-party",
-    "local-folder",
+  "future",
+  "standard-library",
+  "third-party",
+  # Group omniverse extensions separately since they are run-time dependencies
+  # which are pulled in by Isaac Lab extensions
+  "omniverse-extensions",
+  # Group Isaac Lab extensions together since they are all part of the Isaac Lab project
+  "isaaclab",
+  "isaaclab-contrib",
+  "isaaclab-rl",
+  "isaaclab-mimic",
+  "isaaclab-tasks",
+  "isaaclab-assets",
+  # First-party is reserved for project templates
+  "first-party",
+  "local-folder",
 ]
 
 [tool.ruff.lint.isort.sections]
 # Define what belongs in each custom section
 
 "omniverse-extensions" = [
-    "isaacsim",
-    "omni",
-    "pxr",
-    "carb",
-    "usdrt",
-    "Semantics",
-    "curobo",
+  "isaacsim",
+  "omni",
+  "pxr",
+  "carb",
+  "usdrt",
+  "Semantics",
+  "curobo",
 ]
 
 "isaaclab" = ["isaaclab"]
@@ -104,12 +107,12 @@ docstring-code-format = true
 
 include = ["source", "scripts"]
 exclude = [
-    "**/__pycache__",
-    "**/_isaac_sim",
-    "**/docs",
-    "**/logs",
-    ".git",
-    ".vscode",
+  "**/__pycache__",
+  "**/_isaac_sim",
+  "**/docs",
+  "**/logs",
+  ".git",
+  ".vscode",
 ]
 
 typeCheckingMode = "basic"
@@ -137,9 +140,7 @@ ignore-words-list = "haa,slq,collapsable,buss,reacher,thirdparty"
 
 [tool.pytest.ini_options]
 
-markers = [
-    "isaacsim_ci: mark test to run in isaacsim ci",
-]
+markers = ["isaacsim_ci: mark test to run in isaacsim ci"]
 
 # Add pypi.nvidia.com so that `uv pip install isaaclab[isaacsim]` works without --extra-index-url.
 # Pip still needs "--extra-index-url https://pypi.nvidia.com".
@@ -154,14 +155,12 @@ build-backend = "setuptools.build_meta"
 name = "diffaero"
 version = "0.1.0"
 description = "DiffAero Lab - Isaac Lab extension for drone racing simulation"
-authors = [{name = "DiffAero Team"}]
+authors = [{ name = "DiffAero Team" }]
 requires-python = ">=3.10"
-dependencies = [
-    "psutil",
-]
+dependencies = ["psutil"]
 
 [tool.setuptools]
-package-dir = {"" = "source/diffaero_lab"}
+package-dir = { "" = "source/diffaero_lab" }
 
 [tool.setuptools.packages.find]
 where = ["source/diffaero_lab"]
