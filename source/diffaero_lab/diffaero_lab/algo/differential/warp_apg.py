@@ -89,6 +89,18 @@ class WarpAPG:
             self._rollout.forward()
         tape.backward(self._rollout.loss)
 
+        # Periodic debug
+        if wp.get_device().is_cuda:
+            wp.synchronize()
+        g = self._rollout.params.grad
+        if g is not None:
+            g_np = g.numpy()
+            self._debug_max_abs = max(abs(float(x)) for x in g_np.flat)
+            self._debug_nonzero = sum(1 for x in g_np.flat if abs(x) > 1e-10)
+        else:
+            self._debug_max_abs = -1.0
+            self._debug_nonzero = -1
+
         # Compute grad norm before clipping/step (which zeros grads)
         self._last_grad_norm = self._compute_grad_norm()
 

@@ -131,10 +131,14 @@ class WarpAPGTrainer:
                     f"grad_norm={result['grad_norm']:.6f}, "
                     f"it/s={1.0 / elapsed:.1f}"
                 )
+                # Debug gradient info from WarpAPG
+                debug = getattr(self.apg, '_debug_max_abs', None)
+                if debug is not None:
+                    print(f"  [grad debug] max_abs={self.apg._debug_max_abs:.8f}, nonzero={self.apg._debug_nonzero}")
 
-            # 4. Periodic evaluation in IsaacLab
-            if eval_every > 0 and iteration > 0 and iteration % eval_every == 0:
-                self._evaluate(viz=viz)
+            # 4. Periodic evaluation in IsaacLab (disabled until stable)
+            # if eval_every > 0 and iteration > 0 and iteration % eval_every == 0:
+            #     self._evaluate(viz=viz)
 
     def _evaluate(self, viz: bool = False) -> None:  # noqa: FBT001
         """Evaluate current policy in IsaacLab env.

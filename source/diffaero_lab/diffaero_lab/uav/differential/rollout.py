@@ -241,8 +241,8 @@ class WarpDroneRollout:
         ]
         spatials = [
             wp.spatial_vector(
-                wp.vec3(float(ang_cpu[i, 0]), float(ang_cpu[i, 1]), float(ang_cpu[i, 2])),
-                wp.vec3(float(lin_cpu[i, 0]), float(lin_cpu[i, 1]), float(lin_cpu[i, 2])),
+                float(ang_cpu[i, 0]), float(ang_cpu[i, 1]), float(ang_cpu[i, 2]),
+                float(lin_cpu[i, 0]), float(lin_cpu[i, 1]), float(lin_cpu[i, 2]),
             )
             for i in range(self.num_envs)
         ]
