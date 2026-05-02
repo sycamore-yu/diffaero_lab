@@ -48,7 +48,7 @@ def mlp_forward_kernel(
     for i in range(in_dim):
         hidden[tid, i] = obs[tid, i]
 
-    param_offset = 0
+    param_offset = int(0)
     for layer in range(num_layers):
         in_d = layer_dims[layer]
         out_d = layer_dims[layer + 1]
@@ -84,8 +84,8 @@ def action_to_wrench_kernel(
     thrust_scale: float,
     moment_scale: float,
     robot_weight: float,
-    body_f: wp.array(dtype=wp.spatial_vector),
     num_envs: int,
+    body_f: wp.array(dtype=wp.spatial_vector),
 ):
     """Map [roll, pitch, yaw, thrust] action to body spatial forces.
 
@@ -115,29 +115,24 @@ def action_to_wrench_kernel(
 
 @wp.func
 def _wrap_pi(angle: float) -> float:
-    """Wrap angle to [-pi, pi]."""
     return wp.atan2(wp.sin(angle), wp.cos(angle))
 
 
 @wp.func
-def _gate_rotmat_w2g(gate_yaw: float) -> wp.mat33:
-    """Build world→gate rotation matrix from gate yaw."""
-    sin_y = wp.sin(gate_yaw)
-    cos_y = wp.cos(gate_yaw)
-    return wp.mat33(
-        wp.vec3(cos_y, sin_y, 0.0),
-        wp.vec3(-sin_y, cos_y, 0.0),
-        wp.vec3(0.0, 0.0, 1.0),
-    )
+def _rot_z(gate_yaw: float) -> wp.mat33:
+    """Rotation matrix about Z axis by gate_yaw."""
+    s = wp.sin(gate_yaw)
+    c = wp.cos(gate_yaw)
+    return wp.mat33(c, s, 0.0, -s, c, 0.0, 0.0, 0.0, 1.0)
 
 
 @wp.func
-def _rotmat_mul_vec(rot: wp.mat33, vec: wp.vec3) -> wp.vec3:
-    """Multiply 3x3 rotation matrix by 3-vector."""
+def _rot_mul_vec(r: wp.mat33, v: wp.vec3) -> wp.vec3:
+    """Multiply mat33 by vec3."""
     return wp.vec3(
-        rot[0][0] * vec[0] + rot[0][1] * vec[1] + rot[0][2] * vec[2],
-        rot[1][0] * vec[0] + rot[1][1] * vec[1] + rot[1][2] * vec[2],
-        rot[2][0] * vec[0] + rot[2][1] * vec[1] + rot[2][2] * vec[2],
+        r[0, 0] * v[0] + r[0, 1] * v[1] + r[0, 2] * v[2],
+        r[1, 0] * v[0] + r[1, 1] * v[1] + r[1, 2] * v[2],
+        r[2, 0] * v[0] + r[2, 1] * v[1] + r[2, 2] * v[2],
     )
 
 
@@ -170,14 +165,14 @@ def compute_obs_kernel(
     next_gate_y = next_target_yaw[tid]
 
     # Build gate→world rotation and transform
-    rot = _gate_rotmat_w2g(gate_y)
+    rot = _rot_z(gate_y)
 
     # Position in gate frame: gate_pos - drone_pos, rotated to gate frame
     rel_w = wp.vec3(gate_pos[0] - pos[0], gate_pos[1] - pos[1], gate_pos[2] - pos[2])
-    pos_g = _rotmat_mul_vec(rot, rel_w)
+    pos_g = _rot_mul_vec(rot, rel_w)
 
     # Velocity in gate frame
-    vel_g = _rotmat_mul_vec(rot, vel)
+    vel_g = _rot_mul_vec(rot, vel)
 
     # Quaternion to RPY (from gates.py gate_frame_state)
     # q = (x, y, z, w) xyzw
@@ -197,7 +192,7 @@ def compute_obs_kernel(
 
     # Next gate relative position/yaw (in current gate frame)
     next_rel_w = wp.vec3(next_gate_pos[0] - gate_pos[0], next_gate_pos[1] - gate_pos[1], next_gate_pos[2] - gate_pos[2])
-    next_rel_pos = _rotmat_mul_vec(rot, next_rel_w)
+    next_rel_pos = _rot_mul_vec(rot, next_rel_w)
     next_rel_yaw = _wrap_pi(next_gate_y - gate_y)
 
     # Write 13-dim observation
@@ -237,10 +232,10 @@ def gate_crossing_kernel(
     """
     tid = wp.tid()
 
-    rot = _gate_rotmat_w2g(gate_yaw[tid])
+    rot = _rot_z(gate_yaw[tid])
 
-    prev_rel = _rotmat_mul_vec(rot, prev_position_w[tid] - gate_position_w[tid])
-    curr_rel = _rotmat_mul_vec(rot, position_w[tid] - gate_position_w[tid])
+    prev_rel = _rot_mul_vec(rot, prev_position_w[tid] - gate_position_w[tid])
+    curr_rel = _rot_mul_vec(rot, position_w[tid] - gate_position_w[tid])
 
     pass_through = (prev_rel[0] < 0.0) and (curr_rel[0] > 0.0)
     inside_gate = abs(curr_rel[1]) + abs(curr_rel[2]) < gate_l1_radius

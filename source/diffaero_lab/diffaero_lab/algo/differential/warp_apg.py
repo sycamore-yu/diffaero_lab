@@ -68,50 +68,29 @@ class WarpAPG:
         # CUDA graph capture (faster subsequent iterations)
         self._graph: wp.Capture | None = None
         self._graph_captured = False
+        self._last_grad_norm = 0.0
 
     # ------------------------------------------------------------------
     # Training
     # ------------------------------------------------------------------
 
     def train_step(self) -> dict[str, float]:
-        """Execute one forward+backward+update cycle.
-
-        Runs the full rollout under wp.Tape(), computes gradients via
-        tape.backward(loss), clips gradients, and steps the optimizer.
-
-        Returns:
-            Dict with 'loss' (float) and 'grad_norm' (float).
-        """
-        # First call: capture CUDA graph for subsequent iterations
-        if wp.get_device().is_cuda and not self._graph_captured:
-            self._train_step_impl()
-            # Sync before capture
-            wp.synchronize()
-            self._capture_graph()
-            self._graph_captured = True
-
-        # Replay CUDA graph or run direct
-        if self._graph is not None:
-            wp.capture_launch(self._graph)
-        else:
-            self._train_step_impl()
-
-        # Read metrics (CPU sync required after graph launch)
+        """Execute one forward+backward+update cycle."""
+        self._train_step_impl()
         wp.synchronize()
         loss_val = float(self._rollout.loss.numpy()[0])
         grad_norm = self._compute_grad_norm()
-
-        return {"loss": loss_val, "grad_norm": grad_norm}
+        return {"loss": loss_val, "grad_norm": self._last_grad_norm}
 
     def _train_step_impl(self) -> None:
-        """Core forward+backward+update logic (capturable)."""
-        # Forward under tape
+        """Core forward+backward+optimizer logic."""
         tape = wp.Tape()
         with tape:
             self._rollout.forward()
-
-        # Backward from scalar loss
         tape.backward(self._rollout.loss)
+
+        # Compute grad norm before clipping/step (which zeros grads)
+        self._last_grad_norm = self._compute_grad_norm()
 
         # Gradient clipping
         if self._max_grad_norm is not None and self._max_grad_norm > 0:
@@ -121,19 +100,7 @@ class WarpAPG:
 
         # Optimizer step
         self._optimizer.step([self._rollout.params.grad])
-
-        # Zero tape for next iteration
         tape.zero()
-
-    def _capture_graph(self) -> None:
-        """Capture CUDA graph for the full train step."""
-        try:
-            with wp.ScopedCapture() as capture:
-                self._train_step_impl()
-            self._graph = capture.graph
-        except Exception:
-            # Fallback: no graph capture (e.g., on CPU or unsupported op)
-            self._graph = None
 
     # ------------------------------------------------------------------
     # Gradient utilities

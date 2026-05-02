@@ -79,7 +79,7 @@ def _extract_position(
     p = wp.transform_get_translation(tf)
     q = wp.transform_get_rotation(tf)
     pos[tid] = p
-    quat[tid] = wp.vec4(wp.quat_x(q), wp.quat_y(q), wp.quat_z(q), wp.quat_w(q))
+    quat[tid] = wp.vec4(q.x, q.y, q.z, q.w)
 
 
 @wp.kernel
@@ -91,16 +91,8 @@ def _extract_velocity(
     """Extract linear and angular velocity from spatial vectors."""
     tid = wp.tid()
     sv = body_qd[tid]
-    lin_vel[tid] = wp.vec3(
-        wp.spatial_top(sv)[0],
-        wp.spatial_top(sv)[1],
-        wp.spatial_top(sv)[2],
-    )
-    ang_vel[tid] = wp.vec3(
-        wp.spatial_bottom(sv)[0],
-        wp.spatial_bottom(sv)[1],
-        wp.spatial_bottom(sv)[2],
-    )
+    lin_vel[tid] = wp.spatial_bottom(sv)
+    ang_vel[tid] = wp.spatial_top(sv)
 
 
 @wp.kernel
@@ -167,7 +159,7 @@ class WarpDroneRollout:
 
         # -- Hidden buffer for MLP scratch space --
         max_hidden = max(cfg.hidden_dims) if cfg.hidden_dims else cfg.action_dim
-        self.mlp_hidden = wp.zeros((cfg.num_envs, max_hidden), dtype=float, device=device)
+        self.mlp_hidden = wp.zeros((cfg.num_envs, max_hidden), dtype=float, device=device, requires_grad=True)
 
         # -- State ring buffer --
         self._states = [self.model.state() for _ in range(self.total_steps + 1)]
@@ -176,23 +168,23 @@ class WarpDroneRollout:
 
         # -- Observation buffer (one per horizon step + initial) --
         self._obs_buf = [
-            wp.zeros((cfg.num_envs, cfg.obs_dim), dtype=float, device=device) for _ in range(cfg.horizon + 1)
+            wp.zeros((cfg.num_envs, cfg.obs_dim), dtype=float, device=device, requires_grad=True) for _ in range(cfg.horizon + 1)
         ]
 
         # -- Action buffer --
         self._actions = [
-            wp.zeros((cfg.num_envs, cfg.action_dim), dtype=float, device=device) for _ in range(cfg.horizon)
+            wp.zeros((cfg.num_envs, cfg.action_dim), dtype=float, device=device, requires_grad=True) for _ in range(cfg.horizon)
         ]
 
         # -- Previous action (starts as zeros) --
-        self._prev_action = wp.zeros((cfg.num_envs, cfg.action_dim), dtype=float, device=device)
+        self._prev_action = wp.zeros((cfg.num_envs, cfg.action_dim), dtype=float, device=device, requires_grad=True)
 
         # -- State views (extracted for obs/loss kernels) --
-        self._pos = wp.zeros(cfg.num_envs, dtype=wp.vec3, device=device)
-        self._quat = wp.zeros(cfg.num_envs, dtype=wp.vec4, device=device)
-        self._lin_vel = wp.zeros(cfg.num_envs, dtype=wp.vec3, device=device)
-        self._ang_vel = wp.zeros(cfg.num_envs, dtype=wp.vec3, device=device)
-        self._prev_pos = wp.zeros(cfg.num_envs, dtype=wp.vec3, device=device)
+        self._pos = wp.zeros(cfg.num_envs, dtype=wp.vec3, device=device, requires_grad=True)
+        self._quat = wp.zeros(cfg.num_envs, dtype=wp.vec4, device=device, requires_grad=True)
+        self._lin_vel = wp.zeros(cfg.num_envs, dtype=wp.vec3, device=device, requires_grad=True)
+        self._ang_vel = wp.zeros(cfg.num_envs, dtype=wp.vec3, device=device, requires_grad=True)
+        self._prev_pos = wp.zeros(cfg.num_envs, dtype=wp.vec3, device=device, requires_grad=True)
 
         # -- Gate targets --
         self._target_pos = wp.zeros(cfg.num_envs, dtype=wp.vec3, device=device)
@@ -201,7 +193,7 @@ class WarpDroneRollout:
         self._next_target_yaw = wp.zeros(cfg.num_envs, dtype=float, device=device)
 
         # -- Loss accumulation --
-        self._step_loss = wp.zeros(cfg.num_envs, dtype=float, device=device)
+        self._step_loss = wp.zeros(cfg.num_envs, dtype=float, device=device, requires_grad=True)
         self._total_loss = wp.zeros(1, dtype=wp.float32, requires_grad=True, device=device)
 
         # -- Public aliases for WarpAPG --
@@ -225,13 +217,7 @@ class WarpDroneRollout:
         self._forward()
 
     def set_initial_state(self, sim_state: dict[str, torch.Tensor]) -> None:
-        """Set initial drone state from IsaacLab sim_state dict.
-
-        Args:
-            sim_state: Dict with keys position_w (N,3), quaternion_w (N,4 xyzw),
-                linear_velocity_w (N,3), angular_velocity_b (N,3),
-                target_position_w (N,3), and optionally target_yaw etc.
-        """
+        """Set initial drone state from IsaacLab sim_state dict."""
         pos_w = sim_state["position_w"]
         quat_w = sim_state["quaternion_w"]
         lin_vel_w = sim_state["linear_velocity_w"]
@@ -239,31 +225,31 @@ class WarpDroneRollout:
         if ang_vel_b is None:
             ang_vel_b = torch.zeros(self.num_envs, 3, device="cuda:0")
 
+        # Move to CPU for wp.array construction
+        pos_cpu = pos_w.cpu()
+        quat_cpu = quat_w.cpu()
+        lin_cpu = lin_vel_w.cpu()
+        ang_cpu = ang_vel_b.cpu()
+
+        # Build full transform and spatial_vector arrays
+        transforms = [
+            wp.transform(
+                wp.vec3(float(pos_cpu[i, 0]), float(pos_cpu[i, 1]), float(pos_cpu[i, 2])),
+                wp.quat(float(quat_cpu[i, 0]), float(quat_cpu[i, 1]), float(quat_cpu[i, 2]), float(quat_cpu[i, 3])),
+            )
+            for i in range(self.num_envs)
+        ]
+        spatials = [
+            wp.spatial_vector(
+                wp.vec3(float(ang_cpu[i, 0]), float(ang_cpu[i, 1]), float(ang_cpu[i, 2])),
+                wp.vec3(float(lin_cpu[i, 0]), float(lin_cpu[i, 1]), float(lin_cpu[i, 2])),
+            )
+            for i in range(self.num_envs)
+        ]
+
         state0 = self._states[0]
-        for env_id in range(self.num_envs):
-            state0.body_q.assign(
-                wp.transform(
-                    wp.vec3(float(pos_w[env_id, 0]), float(pos_w[env_id, 1]), float(pos_w[env_id, 2])),
-                    wp.quat(
-                        float(quat_w[env_id, 0]),
-                        float(quat_w[env_id, 1]),
-                        float(quat_w[env_id, 2]),
-                        float(quat_w[env_id, 3]),
-                    ),
-                ),
-                index=env_id,
-            )
-            state0.body_qd.assign(
-                wp.spatial_vector(
-                    float(lin_vel_w[env_id, 0]),
-                    float(lin_vel_w[env_id, 1]),
-                    float(lin_vel_w[env_id, 2]),
-                    float(ang_vel_b[env_id, 0]),
-                    float(ang_vel_b[env_id, 1]),
-                    float(ang_vel_b[env_id, 2]),
-                ),
-                index=env_id,
-            )
+        state0.body_q.assign(wp.array(transforms, dtype=wp.transform, device=self.device))
+        state0.body_qd.assign(wp.array(spatials, dtype=wp.spatial_vector, device=self.device))
 
         # Collision detection for initial state
         self.model.collision_pipeline.collide(state0, self._contacts_list[0])
@@ -271,18 +257,21 @@ class WarpDroneRollout:
         # Set gate targets
         tp = sim_state.get("target_position_w")
         if tp is not None:
-            for env_id in range(self.num_envs):
-                self._target_pos.assign(
-                    wp.vec3(float(tp[env_id, 0]), float(tp[env_id, 1]), float(tp[env_id, 2])),
-                    index=env_id,
+            tp_cpu = tp.cpu()
+            self._target_pos.assign(
+                wp.array(
+                    [wp.vec3(float(tp_cpu[i, 0]), float(tp_cpu[i, 1]), float(tp_cpu[i, 2])) for i in range(self.num_envs)],
+                    dtype=wp.vec3, device=self.device,
                 )
+            )
 
         # Store initial position as previous for progress loss
-        for env_id in range(self.num_envs):
-            self._prev_pos.assign(
-                wp.vec3(float(pos_w[env_id, 0]), float(pos_w[env_id, 1]), float(pos_w[env_id, 2])),
-                index=env_id,
+        self._prev_pos.assign(
+            wp.array(
+                [wp.vec3(float(pos_cpu[i, 0]), float(pos_cpu[i, 1]), float(pos_cpu[i, 2])) for i in range(self.num_envs)],
+                dtype=wp.vec3, device=self.device,
             )
+        )
 
         # Compute initial observation
         self._extract_and_obs(0, is_initial=True)
@@ -294,22 +283,30 @@ class WarpDroneRollout:
         next_target_pos: torch.Tensor,
         next_target_yaw: torch.Tensor,
     ) -> None:
-        """Update gate target positions and yaws."""
-        for env_id in range(self.num_envs):
-            self._target_pos.assign(
-                wp.vec3(float(target_pos[env_id, 0]), float(target_pos[env_id, 1]), float(target_pos[env_id, 2])),
-                index=env_id,
+        """Update gate target positions and yaws from torch tensors."""
+        tp_cpu = target_pos.cpu()
+        ty_cpu = target_yaw.cpu()
+        np_cpu = next_target_pos.cpu()
+        ny_cpu = next_target_yaw.cpu()
+
+        self._target_pos.assign(
+            wp.array(
+                [wp.vec3(float(tp_cpu[i, 0]), float(tp_cpu[i, 1]), float(tp_cpu[i, 2])) for i in range(self.num_envs)],
+                dtype=wp.vec3, device=self.device,
             )
-            self._target_yaw.assign(float(target_yaw[env_id]), index=env_id)
-            self._next_target_pos.assign(
-                wp.vec3(
-                    float(next_target_pos[env_id, 0]),
-                    float(next_target_pos[env_id, 1]),
-                    float(next_target_pos[env_id, 2]),
-                ),
-                index=env_id,
+        )
+        self._target_yaw.assign(
+            wp.array([float(ty_cpu[i]) for i in range(self.num_envs)], dtype=float, device=self.device)
+        )
+        self._next_target_pos.assign(
+            wp.array(
+                [wp.vec3(float(np_cpu[i, 0]), float(np_cpu[i, 1]), float(np_cpu[i, 2])) for i in range(self.num_envs)],
+                dtype=wp.vec3, device=self.device,
             )
-            self._next_target_yaw.assign(float(next_target_yaw[env_id]), index=env_id)
+        )
+        self._next_target_yaw.assign(
+            wp.array([float(ny_cpu[i]) for i in range(self.num_envs)], dtype=float, device=self.device)
+        )
 
     def export_actor_pytorch(self) -> tuple[list[torch.Tensor], list[torch.Tensor]]:
         """Export actor weights/biases as PyTorch tensors.

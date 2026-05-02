@@ -212,7 +212,7 @@ def main():
         trainer.train(
             max_iterations=args_cli.max_iterations,
             eval_every=args_cli.eval_every,
-            viz=args_cli.viz is not None,
+            viz=False,
         )
 
         print("[INFO] Training complete")
