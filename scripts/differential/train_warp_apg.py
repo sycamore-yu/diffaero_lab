@@ -93,11 +93,8 @@ class WarpAPGTrainer:
             batch = self.isaac_env.reset()
             sim_state = batch.extras.get("sim_state", {})
 
-            # Extract initial body state from IsaacLab's robot
+            # Get drone env for gate targets
             drone_env = self.isaac_env.env.unwrapped
-            robot = drone_env.robot
-            init_body_q = robot.data.body_q
-            init_body_qd = robot.data.body_qd
 
             # Set initial state into Warp rollout (via torch tensors from IsaacLab)
             init_pos = sim_state.get("position_w")
@@ -186,8 +183,6 @@ def main():
     parser.add_argument("--hidden_dims", type=int, nargs="+", default=[256, 128, 64], help="MLP hidden dimensions")
     parser.add_argument("--thrust_scale", type=float, default=1.9, help="Thrust scale factor")
     parser.add_argument("--moment_scale", type=float, default=0.01, help="Moment scale factor")
-    parser.add_argument("--viz", type=str, default=None, help="Visualizer: viser, rerun, or None")
-
     args_cli, hydra_args = parser.parse_known_args()
     sys.argv = [sys.argv[0]] + hydra_args
 
